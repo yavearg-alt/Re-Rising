@@ -1,0 +1,363 @@
+{
+ "_comment": "Field order of tables that are empty in the archived account (extracted/sample_user), taken from the client's serializers (see docs/CHANGELOG.md, docs/NEXT_RAID.md). Used by userdata.canonical (server) and the test bench.",
+ "guild": [
+  "userId",
+  "guildId",
+  "leaderUserId",
+  "leaderUserRank",
+  "subLeaderUserId",
+  "guildRank",
+  "guildLastRaidEventRank",
+  "comment",
+  "iconItemId",
+  "atmosphereType",
+  "totalCombatPower",
+  "isRequiredApproval",
+  "memberCount",
+  "name",
+  "lastUpdatedAt",
+  "raidEventDefeatPointBonusHour",
+  "raidEventDefeatPointBonusTime"
+ ],
+ "guildMember": [
+  "userId",
+  "guildId",
+  "memberUserId",
+  "combatPower",
+  "role",
+  "registeredAt",
+  "isBanUser"
+ ],
+ "guildChat": [
+  "userId",
+  "guildId",
+  "id",
+  "speakerUserId",
+  "text",
+  "updatedAt",
+  "isDeleted",
+  "fixedMessageId",
+  "stampId",
+  "battleLogId",
+  "battleLogType"
+ ],
+ "guildBoard": [
+  "userId",
+  "guildId",
+  "id",
+  "speakerUserId",
+  "text",
+  "updatedAt",
+  "isDeleted",
+  "type",
+  "parameterA"
+ ],
+ "guildTimeLine": [
+  "userId",
+  "guildId",
+  "id",
+  "type",
+  "parameterA",
+  "parameterB",
+  "parameterC",
+  "registeredAt"
+ ],
+ "guildJoinRequest": [
+  "userId",
+  "guildId",
+  "registeredAt"
+ ],
+ "guildJoinRequestReceive": [
+  "userId",
+  "guildId",
+  "requestUserId",
+  "registeredAt"
+ ],
+ "guildMemberInvite": [
+  "userId",
+  "guildId",
+  "invitedUserId",
+  "inviteUserId",
+  "registeredAt"
+ ],
+ "guildMemberInviteReceive": [
+  "userId",
+  "guildId",
+  "inviteUserId",
+  "registeredAt",
+  "readState"
+ ],
+ "guildNotification": [
+  "userId",
+  "guildId",
+  "hasNotReadChat",
+  "hasNotReadBoard",
+  "hasJoinRequested",
+  "hasInvite",
+  "hasNotReadRaidResult",
+  "hasAcceptableGuildMission"
+ ],
+ "guildClosedChatAgreement": [
+  "userId",
+  "version",
+  "lastAgreeAt"
+ ],
+ "guildRecommendInviteMember": [
+  "userId",
+  "guestId"
+ ],
+ "guildMission": [
+  "userId",
+  "guildId",
+  "index",
+  "guildMissionId",
+  "chargeUserId",
+  "state",
+  "acceptedAt",
+  "completedAt"
+ ],
+ "guildMissionStatus": [
+  "userId",
+  "guildId",
+  "guildMissionPoint",
+  "guildMissionLottedAt",
+  "guildMissionPointUpdatedAt",
+  "previousWeekGuildMissionPoint",
+  "previousWeekGuildMissionPointUpdatedAt",
+  "previousWeekGuildMissionPointRewardGroupId",
+  "yesterdayGuildMissionCompletedCount"
+ ],
+ "guildMemberMission": [
+  "userId",
+  "guildId",
+  "memberUserId",
+  "guildMissionPoint",
+  "guildMissionPointUpdatedAt",
+  "guildMissionRewardReceivedAt",
+  "guildMissionRewardDialogReadAt"
+ ],
+ "guest": [
+  "userId",
+  "guestUserId",
+  "info",
+  "pc",
+  "equipmentStock",
+  "supporterPcSlot",
+  "imaginationStock",
+  "profileTrackers"
+ ],
+ "imaginationStock": [
+  "userId",
+  "id",
+  "imaginationId",
+  "isFavorite",
+  "readState"
+ ],
+ "imaginationSpecie": [
+  "userId",
+  "imaginationId",
+  "exchangedCount",
+  "lastUpdatedAt"
+ ],
+ "exchangedItem": [
+  "userId",
+  "exchangeOutputItemId",
+  "count",
+  "lastUpdatedAt",
+  "readState"
+ ],
+ "pvp": [
+  "userId",
+  "pvpId",
+  "activePartyId",
+  "point",
+  "maxReachingPoint",
+  "bp",
+  "rewardReceivedAt",
+  "bpUpdatedAt",
+  "consecutiveWinCount"
+ ],
+ "pvpNpcParty": [
+  "userId",
+  "partyIndex",
+  "enemyUserId",
+  "rank",
+  "point",
+  "info",
+  "party",
+  "pc",
+  "equipmentStock",
+  "imaginationStock"
+ ],
+ "towerEvent": [
+  "userId",
+  "eventId",
+  "maxFloor"
+ ],
+ "pcTowerStatus": [
+  "userId",
+  "pcId",
+  "hp",
+  "mp",
+  "dispatchedCount"
+ ],
+ "raidEvent": [
+  "userId",
+  "eventId",
+  "defeatPoint",
+  "guildDefeatPoint",
+  "wp",
+  "wpUpdatedAt",
+  "guildId",
+  "lastWorldBossDailyResultReceivedAt",
+  "maxReceivedWorldDefeatRewardId",
+  "lastAttackedRaidEventWorldBossLevelId",
+  "lastAttackedWorldBossId",
+  "lastResultShownWorldBossId",
+  "maxRaidEventGuildPointRewardId"
+ ],
+ "raidEventArea": [
+  "userId",
+  "raidEventAreaId",
+  "eventId",
+  "bossIds"
+ ],
+ "raidEventBossLevelGroup": [
+  "userId",
+  "eventId",
+  "raidBossLevelGroupId",
+  "raidBossDefeatCount",
+  "reduceDefeatCount"
+ ],
+ "raidEventBossSharedStatus": [
+  "userId",
+  "bossId",
+  "eventId",
+  "questId",
+  "stageId",
+  "raidEventBossLevelId",
+  "findUserId",
+  "bestAttackUserId",
+  "bestAttackDamage",
+  "comboCount",
+  "comboUpdatedAt",
+  "attackerCount",
+  "rescueUserIds",
+  "encountStatus",
+  "appearedAt",
+  "expiredAt",
+  "timeupAt",
+  "bestAttackParty",
+  "bestChargerUserId",
+  "bestChargerAmount",
+  "takeOverIncarnate",
+  "rescueGuildIds",
+  "guildCombo",
+  "worldBossId"
+ ],
+ "raidEventBossStatus": [
+  "userId",
+  "bossId",
+  "isFriendRescue",
+  "damage",
+  "playCount",
+  "eventId",
+  "acquireBonusCharacterIds",
+  "escapeReadState",
+  "appearWarning",
+  "stageId",
+  "findUserId",
+  "bossBattleState",
+  "bossStartHp",
+  "bossStartIncarnate",
+  "chargeIncarnateAmount",
+  "isSentRescue",
+  "isGuildRescue",
+  "consumingWp"
+ ],
+ "raidEventBossResult": [
+  "userId",
+  "bossId",
+  "damageDefeatPoint",
+  "damageContributeRate",
+  "bestAttackBonusDefeatPoint",
+  "findBonusDefeatPoint",
+  "friendRescueBonusDefeatPoint",
+  "specialBonusDefeatRate",
+  "totalDefeatPoint",
+  "rewardGroupIds",
+  "pointRewardIds",
+  "eventDropBonus",
+  "eventId",
+  "bossResultState",
+  "readState",
+  "shouldShowMvp",
+  "finishedAt",
+  "guildDefeatPointBonusRate",
+  "guildDefeatPoint",
+  "seasonPoint",
+  "seasonPointItemId",
+  "seasonPointBoostRatio",
+  "eventSeasonPoint",
+  "eventSeasonPointItemId",
+  "eventSeasonPointBoostRatio"
+ ],
+ "raidEventMvpResult": [
+  "userId",
+  "bossId",
+  "recommendedUserId",
+  "eventId",
+  "rewardState",
+  "rewardGroupId",
+  "readState"
+ ],
+ "raidEventWorldBossStatus": [
+  "userId",
+  "worldBossId",
+  "eventId",
+  "raidEventWorldBossLevelId",
+  "defeatCount",
+  "raidBossDefeatCount",
+  "spawnAt",
+  "hp"
+ ],
+ "raidEventGuildRankingScore": [
+  "userId",
+  "eventId",
+  "guildId",
+  "rank",
+  "guildDefeatPoint"
+ ],
+ "raidEventGuildRankingMemberScore": [
+  "userId",
+  "guildId",
+  "guestId",
+  "rank",
+  "guildDefeatPoint"
+ ],
+ "raidEventGuildRankingResult": [
+  "userId",
+  "eventId",
+  "raidEventGuildRankRewardId",
+  "raidEventGuildMemberRankRewardId",
+  "readState",
+  "rewardOpenState",
+  "luckyNumberRewardId"
+ ],
+ "raidEventGuildRankingPointResult": [
+  "userId",
+  "eventId",
+  "groupId",
+  "memberCount",
+  "currentRank"
+ ],
+ "follow": [
+  "userId",
+  "followUserId"
+ ],
+ "follower": [
+  "userId",
+  "followerUserId",
+  "readState"
+ ]
+}

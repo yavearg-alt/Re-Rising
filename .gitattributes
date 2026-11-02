@@ -1,0 +1,11 @@
+* text=auto
+*.sh text eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.ogg binary
+*.mp4 binary
+*.asset -text merge=unityyamlmerge diff
+*.unity -text merge=unityyamlmerge diff
+*.prefab -text merge=unityyamlmerge diff
+*.meta -text

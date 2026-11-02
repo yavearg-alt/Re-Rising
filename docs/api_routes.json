@@ -1,0 +1,996 @@
+{
+ "battle/damage": {
+  "functions": [
+   "FUN_00b791fc@00b791fc"
+  ],
+  "keys": [
+   "mp",
+   "normal",
+   "heal"
+  ],
+  "implemented": false
+ },
+ "bne/consent/info_get": {
+  "functions": [
+   "FUN_0111ccc8@0111ccc8"
+  ],
+  "keys": [
+   "userId"
+  ],
+  "implemented": false
+ },
+ "bne/consent/info_post": {
+  "functions": [
+   "FUN_0111cef0@0111cef0"
+  ],
+  "keys": [
+   "bneConsentInfo"
+  ],
+  "implemented": false
+ },
+ "bne/consent/terms": {
+  "functions": [
+   "FUN_0111d26c@0111d26c"
+  ],
+  "keys": [],
+  "implemented": false
+ },
+ "client/log": {
+  "functions": [
+   "FUN_00da3ecc@00da3ecc"
+  ],
+  "keys": [
+   "type",
+   "assetDownloadError",
+   "errorCode",
+   "error",
+   "message",
+   "failCount"
+  ],
+  "implemented": true
+ },
+ "encryption/aes_iv": {
+  "functions": [
+   "FUN_01079cd8@01079cd8"
+  ],
+  "keys": [
+   "before",
+   "after",
+   "table",
+   "hash",
+   "scripts",
+   "user_data_sync",
+   "user_data"
+  ],
+  "implemented": false
+ },
+ "equipment/expand": {
+  "functions": [
+   "FUN_013db4d0@013db4d0"
+  ],
+  "keys": [
+   "userId",
+   "addCount",
+   "consumeGem"
+  ],
+  "implemented": true
+ },
+ "event/character/reward/receive": {
+  "functions": [
+   "FUN_0125a590@0125a590"
+  ],
+  "keys": [
+   "userId",
+   "pcType",
+   "progress"
+  ],
+  "implemented": false
+ },
+ "event/floor/ranking/detail": {
+  "functions": [
+   "FUN_0128140c@0128140c"
+  ],
+  "keys": [
+   "eventId",
+   "targetUserId"
+  ],
+  "implemented": false
+ },
+ "event/ranking/detail": {
+  "functions": [
+   "FUN_012b73e8@012b73e8"
+  ],
+  "keys": [
+   "eventId",
+   "targetUserId"
+  ],
+  "implemented": false
+ },
+ "event/ranking/list": {
+  "functions": [
+   "FUN_012af6ec@012af6ec"
+  ],
+  "keys": [
+   "userId",
+   "eventId",
+   "offset",
+   "limit",
+   "selfOnly"
+  ],
+  "implemented": false
+ },
+ "friend/follow/request": {
+  "functions": [
+   "FUN_010b95f0@010b95f0"
+  ],
+  "keys": [
+   "userId",
+   "followUserId"
+  ],
+  "implemented": false
+ },
+ "gift/receive": {
+  "functions": [
+   "FUN_013bc8d4@013bc8d4"
+  ],
+  "keys": [
+   "userId",
+   "giftIds"
+  ],
+  "implemented": true
+ },
+ "guest/search": {
+  "functions": [
+   "FUN_0128bf58@0128bf58"
+  ],
+  "keys": [
+   "userId",
+   "guestUserIds"
+  ],
+  "implemented": true
+ },
+ "guild/agreement": {
+  "functions": [
+   "FUN_0112c3f4@0112c3f4"
+  ],
+  "keys": [
+   "userId"
+  ],
+  "implemented": false
+ },
+ "guild/battle/log": {
+  "functions": [
+   "FUN_01132ff0@01132ff0"
+  ],
+  "keys": [
+   "userId",
+   "battleLogId",
+   "speakerUserId"
+  ],
+  "implemented": false
+ },
+ "guild/board/receive": {
+  "functions": [
+   "FUN_01132a8c@01132a8c"
+  ],
+  "keys": [
+   "userId",
+   "guildId",
+   "thresholdBoardId",
+   "getCount"
+  ],
+  "implemented": false
+ },
+ "guild/board/refresh": {
+  "functions": [
+   "FUN_01132868@01132868"
+  ],
+  "keys": [
+   "userId"
+  ],
+  "implemented": false
+ },
+ "guild/board/send": {
+  "functions": [
+   "FUN_01132264@01132264"
+  ],
+  "keys": [
+   "userId",
+   "message",
+   "guildId"
+  ],
+  "implemented": false
+ },
+ "guild/chat/receive": {
+  "functions": [
+   "FUN_01131d40@01131d40"
+  ],
+  "keys": [
+   "userId",
+   "thresholdChatId",
+   "getCount"
+  ],
+  "implemented": false
+ },
+ "guild/chat/refresh": {
+  "functions": [
+   "FUN_01132040@01132040"
+  ],
+  "keys": [
+   "userId"
+  ],
+  "implemented": false
+ },
+ "guild/chat/send": {
+  "functions": [
+   "FUN_011314ac@011314ac"
+  ],
+  "keys": [
+   "userId",
+   "message",
+   "fixedMessageId",
+   "battleLogType",
+   "battleLog",
+   "stampId"
+  ],
+  "implemented": false
+ },
+ "guild/force/kick": {
+  "functions": [
+   "FUN_0112b1bc@0112b1bc"
+  ],
+  "keys": [
+   "userId",
+   "kickedUserId"
+  ],
+  "implemented": false
+ },
+ "guild/form": {
+  "functions": [
+   "FUN_01128e40@01128e40"
+  ],
+  "keys": [
+   "userId",
+   "name",
+   "comment",
+   "atmosphereType",
+   "iconId",
+   "isRequiredApproval"
+  ],
+  "implemented": false
+ },
+ "guild/info/update": {
+  "functions": [
+   "FUN_011292f0@011292f0"
+  ],
+  "keys": [
+   "userId",
+   "name",
+   "comment",
+   "atmosphereType",
+   "iconId",
+   "isRequiredApproval",
+   "raidEventDefeatPointBonusHour"
+  ],
+  "implemented": false
+ },
+ "guild/invite": {
+  "functions": [
+   "FUN_0112b948@0112b948"
+  ],
+  "keys": [
+   "userId",
+   "invitedUserId"
+  ],
+  "implemented": false
+ },
+ "guild/invite/accept": {
+  "functions": [
+   "FUN_0112beb8@0112beb8"
+  ],
+  "keys": [
+   "userId",
+   "guildId"
+  ],
+  "implemented": false
+ },
+ "guild/invite/cancel": {
+  "functions": [
+   "FUN_0112bc00@0112bc00"
+  ],
+  "keys": [
+   "userId",
+   "invitedUserId"
+  ],
+  "implemented": false
+ },
+ "guild/invite/list": {
+  "functions": [
+   "FUN_0112b790@0112b790"
+  ],
+  "keys": [
+   "userId"
+  ],
+  "implemented": false
+ },
+ "guild/invite/member/list": {
+  "functions": [
+   "FUN_0112cd98@0112cd98"
+  ],
+  "keys": [
+   "userId",
+   "guildId"
+  ],
+  "implemented": false
+ },
+ "guild/invite/recommend/list": {
+  "functions": [
+   "FUN_0112ca58@0112ca58"
+  ],
+  "keys": [
+   "userId"
+  ],
+  "implemented": false
+ },
+ "guild/join/request": {
+  "functions": [
+   "FUN_01129974@01129974"
+  ],
+  "keys": [
+   "userId",
+   "guildId"
+  ],
+  "implemented": false
+ },
+ "guild/join/request/accept": {
+  "functions": [
+   "FUN_0112ac4c@0112ac4c"
+  ],
+  "keys": [
+   "userId",
+   "requestUserId"
+  ],
+  "implemented": false
+ },
+ "guild/join/request/cancel": {
+  "functions": [
+   "FUN_01129c48@01129c48"
+  ],
+  "keys": [
+   "userId",
+   "guildId"
+  ],
+  "implemented": false
+ },
+ "guild/join/request/list": {
+  "functions": [
+   "FUN_0112a878@0112a878"
+  ],
+  "keys": [
+   "userId",
+   "guildId"
+  ],
+  "implemented": false
+ },
+ "guild/join/request/reject": {
+  "functions": [
+   "FUN_0112af04@0112af04"
+  ],
+  "keys": [
+   "userId",
+   "requestUserId"
+  ],
+  "implemented": false
+ },
+ "guild/mission/accept": {
+  "functions": [
+   "FUN_0133b640@0133b640"
+  ],
+  "keys": [
+   "userId",
+   "guildId",
+   "index",
+   "guildMissionId"
+  ],
+  "implemented": false
+ },
+ "guild/mission/cancel": {
+  "functions": [
+   "FUN_0133b9dc@0133b9dc"
+  ],
+  "keys": [
+   "userId",
+   "guildId",
+   "index",
+   "guildMissionId"
+  ],
+  "implemented": false
+ },
+ "guild/mission/refresh": {
+  "functions": [
+   "FUN_0133bd78@0133bd78"
+  ],
+  "keys": [
+   "userId",
+   "guildId"
+  ],
+  "implemented": false
+ },
+ "guild/role/update": {
+  "functions": [
+   "FUN_0112b474@0112b474"
+  ],
+  "keys": [
+   "userId",
+   "memberUserId",
+   "role"
+  ],
+  "implemented": false
+ },
+ "guild/search": {
+  "functions": [
+   "FUN_0112a108@0112a108"
+  ],
+  "keys": [
+   "userId",
+   "guildId"
+  ],
+  "implemented": false
+ },
+ "guild/search/friend": {
+  "functions": [
+   "FUN_0112a6b0@0112a6b0"
+  ],
+  "keys": [
+   "userId"
+  ],
+  "implemented": false
+ },
+ "guild/search/recommend": {
+  "functions": [
+   "FUN_011297b4@011297b4"
+  ],
+  "keys": [
+   "userId"
+  ],
+  "implemented": false
+ },
+ "guild/timeline/receive": {
+  "functions": [
+   "FUN_0112c5ac@0112c5ac"
+  ],
+  "keys": [
+   "userId",
+   "guildId",
+   "thresholdTimelineId",
+   "getCount"
+  ],
+  "implemented": false
+ },
+ "guild/top": {
+  "functions": [
+   "FUN_01128c88@01128c88"
+  ],
+  "keys": [
+   "userId"
+  ],
+  "implemented": false
+ },
+ "imagination/exchange": {
+  "functions": [
+   "FUN_0123a004@0123a004"
+  ],
+  "keys": [
+   "userId",
+   "exchangeInputImaginationStockIds",
+   "exchangeOutputImaginationId"
+  ],
+  "implemented": false
+ },
+ "lottery/draw": {
+  "functions": [
+   "FUN_013098d4@013098d4"
+  ],
+  "keys": [
+   "userId",
+   "lotteryPriceId",
+   "ticketId",
+   "ticketAmount",
+   "gemAmount",
+   "step"
+  ],
+  "implemented": true
+ },
+ "lottery/point/convert": {
+  "functions": [
+   "FUN_013a65e0@013a65e0"
+  ],
+  "keys": [
+   "userId"
+  ],
+  "implemented": false
+ },
+ "mission/receive": {
+  "functions": [
+   "FUN_01243650@01243650",
+   "FUN_01245b3c@01245b3c"
+  ],
+  "keys": [
+   "userId",
+   "missionIds"
+  ],
+  "implemented": true
+ },
+ "premium-pass/buy": {
+  "functions": [
+   "FUN_01120f24@01120f24"
+  ],
+  "keys": [
+   "userId",
+   "premiumPassId"
+  ],
+  "implemented": false
+ },
+ "pvp/clear": {
+  "functions": [
+   "FUN_01122f6c@01122f6c"
+  ],
+  "keys": [
+   "userId",
+   "pvpId",
+   "winFlag",
+   "elapsedTurn"
+  ],
+  "implemented": false
+ },
+ "pvp/matching": {
+  "functions": [
+   "FUN_011225cc@011225cc"
+  ],
+  "keys": [
+   "userId",
+   "pvpId",
+   "reloadFlag",
+   "expectedConsumingBp"
+  ],
+  "implemented": false
+ },
+ "pvp/start": {
+  "functions": [
+   "FUN_01122a94@01122a94"
+  ],
+  "keys": [
+   "pvpId",
+   "activePartyId",
+   "npcPartyIndex",
+   "consumingBp"
+  ],
+  "implemented": false
+ },
+ "quest/boost-item/purchase": {
+  "functions": [
+   "FUN_0124f590@0124f590"
+  ],
+  "keys": [
+   "boostItemIds"
+  ],
+  "implemented": false
+ },
+ "quest/clear": {
+  "functions": [
+   "FUN_0126388c@0126388c"
+  ],
+  "keys": [],
+  "implemented": true
+ },
+ "quest/continue": {
+  "functions": [
+   "FUN_014305f0@014305f0"
+  ],
+  "keys": [],
+  "implemented": true
+ },
+ "quest/retire": {
+  "functions": [
+   "FUN_01263ae4@01263ae4"
+  ],
+  "keys": [
+   "isUserRetire"
+  ],
+  "implemented": true
+ },
+ "quest/skip": {
+  "functions": [
+   "FUN_01262490@01262490"
+  ],
+  "keys": [],
+  "implemented": true
+ },
+ "quest/start": {
+  "functions": [
+   "FUN_01261168@01261168"
+  ],
+  "keys": [],
+  "implemented": true
+ },
+ "quest/supporter": {
+  "functions": [
+   "FUN_0128b9a0@0128b9a0"
+  ],
+  "keys": [
+   "questId",
+   "level"
+  ],
+  "implemented": true
+ },
+ "raid/boss/end": {
+  "functions": [
+   "FUN_01263384@01263384"
+  ],
+  "keys": [
+   "userId",
+   "eventId",
+   "bossId",
+   "isUserRetire"
+  ],
+  "implemented": false
+ },
+ "raid/boss/info": {
+  "functions": [
+   "FUN_010bf114@010bf114"
+  ],
+  "keys": [
+   "userId",
+   "eventId",
+   "bossId"
+  ],
+  "implemented": false
+ },
+ "raid/boss/rescue": {
+  "functions": [
+   "FUN_0120b198@0120b198"
+  ],
+  "keys": [
+   "userId",
+   "bossId",
+   "eventId"
+  ],
+  "implemented": false
+ },
+ "raid/boss/start": {
+  "functions": [
+   "FUN_01261168@01261168"
+  ],
+  "keys": [],
+  "implemented": false
+ },
+ "raid/boss/status/update": {
+  "functions": [
+   "FUN_010bf40c@010bf40c"
+  ],
+  "keys": [
+   "userId",
+   "eventId",
+   "escapeBossIds",
+   "appearWarningBossIds"
+  ],
+  "implemented": false
+ },
+ "raid/boss/withdraw": {
+  "functions": [
+   "FUN_010bfbbc@010bfbbc"
+  ],
+  "keys": [
+   "userId",
+   "eventId",
+   "bossId"
+  ],
+  "implemented": false
+ },
+ "raid/guild/ranking/list": {
+  "functions": [
+   "FUN_012e490c@012e490c"
+  ],
+  "keys": [
+   "userId",
+   "eventId",
+   "guildId",
+   "offset",
+   "limit"
+  ],
+  "implemented": false
+ },
+ "raid/guild/ranking/member/list": {
+  "functions": [
+   "FUN_012e1020@012e1020"
+  ],
+  "keys": [
+   "userId",
+   "eventId",
+   "guildId"
+  ],
+  "implemented": false
+ },
+ "raid/info": {
+  "functions": [
+   "FUN_010beeac@010beeac"
+  ],
+  "keys": [
+   "userId",
+   "eventId"
+  ],
+  "implemented": false
+ },
+ "raid/mvp/elect": {
+  "functions": [
+   "FUN_010bff00@010bff00"
+  ],
+  "keys": [
+   "userId",
+   "eventId",
+   "bossId",
+   "electUserId"
+  ],
+  "implemented": false
+ },
+ "raid/rescue/save": {
+  "functions": [
+   "FUN_010bf7d4@010bf7d4"
+  ],
+  "keys": [
+   "userId",
+   "eventId",
+   "bossId",
+   "userIds",
+   "guildRescueFlag"
+  ],
+  "implemented": false
+ },
+ "raid/wp/item/recover": {
+  "functions": [
+   "FUN_010c026c@010c026c"
+  ],
+  "keys": [
+   "itemId",
+   "amount",
+   "userId",
+   "eventId",
+   "items"
+  ],
+  "implemented": false
+ },
+ "season-point-boost/buy": {
+  "functions": [
+   "FUN_0112117c@0112117c"
+  ],
+  "keys": [
+   "userId",
+   "seasonPointBoostId"
+  ],
+  "implemented": false
+ },
+ "season-reward/receive": {
+  "functions": [
+   "FUN_01120cb0@01120cb0"
+  ],
+  "keys": [
+   "userId",
+   "seasonRewardIds"
+  ],
+  "implemented": false
+ },
+ "season-reward/unlock": {
+  "functions": [
+   "FUN_011213d4@011213d4"
+  ],
+  "keys": [
+   "userId",
+   "seasonRewardId",
+   "cost"
+  ],
+  "implemented": false
+ },
+ "tutorial/skip/first": {
+  "functions": [
+   "FUN_010be0c0@010be0c0"
+  ],
+  "keys": [
+   "userId"
+  ],
+  "implemented": true
+ },
+ "user/eco_mode": {
+  "functions": [
+   "FUN_01060ab4@01060ab4",
+   "FUN_01060b84@01060b84"
+  ],
+  "keys": [
+   "true",
+   "false"
+  ],
+  "implemented": false
+ },
+ "user/high_resolution": {
+  "functions": [
+   "FUN_01060c2c@01060c2c",
+   "FUN_01060d68@01060d68"
+  ],
+  "keys": [
+   "true",
+   "false"
+  ],
+  "implemented": false
+ },
+ "user/last_title_world": {
+  "functions": [
+   "FUN_00c77b2c@00c77b2c"
+  ],
+  "keys": [],
+  "implemented": false
+ },
+ "user/migration/confirm": {
+  "functions": [
+   "FUN_00ed4214@00ed4214"
+  ],
+  "keys": [
+   "migrationUserId"
+  ],
+  "implemented": false
+ },
+ "user/pad_reset": {
+  "functions": [
+   "FUN_010afbc4@010afbc4"
+  ],
+  "keys": [
+   "true",
+   "bgm_pack",
+   "se_pack",
+   "voice_pack",
+   "low_pack"
+  ],
+  "implemented": false
+ },
+ "user/pull": {
+  "functions": [
+   "FUN_00bb5288@00bb5288",
+   "FUN_00d2e964@00d2e964",
+   "FUN_0107aba8@0107aba8",
+   "FUN_00d34f84@00d34f84",
+   "FUN_01135d50@01135d50"
+  ],
+  "keys": [
+   "tutorial.quest.1_2_3",
+   "title_back",
+   "YES",
+   "NO",
+   "system_flag.feature.quest",
+   "home.to.quest",
+   "se.ui_transition",
+   "system_flag.feature.party",
+   "home.to.party",
+   "tutorial.party",
+   "system_flag.feature.shop",
+   "tutorial.equipment_enhance",
+   "home.to.shop",
+   "home.select.event",
+   "system_flag.feature.scout",
+   "tutorial.scout",
+   "home.to.scout",
+   "system_flag.feature.exchange_shop",
+   "system_flag.feature.pvp",
+   "tutorial.pvp",
+   "home.select.pvp",
+   "tower_error_out_of_period_title",
+   "tower_error_out_of_period_message",
+   "system_flag_is_maintenance",
+   "system_flag.feature.guild",
+   "home.select.guild",
+   "tutorial.guild",
+   "system_flag.feature.raid",
+   "tutorial.raid",
+   "home.select.raid",
+   "system_flag.feature.tower",
+   "tutorial.tower",
+   "home.select.tower",
+   "event_not_exist",
+   "HomeVisited",
+   "SKIP",
+   "skip_tutorial_2_confirmation",
+   "CommonUpdated",
+   "home.open",
+   "home_dialog_license",
+   "home_free_term_end_remind",
+   "season_pt_boost_expired_notice",
+   "UserGift"
+  ],
+  "implemented": true
+ },
+ "user/push": {
+  "functions": [
+   "FUN_01079cd8@01079cd8",
+   "FUN_010779f4@010779f4"
+  ],
+  "keys": [
+   "before",
+   "after",
+   "table",
+   "hash",
+   "scripts",
+   "user_data_sync",
+   "user_data"
+  ],
+  "implemented": true
+ },
+ "user/repair": {
+  "functions": [
+   "FUN_00ec411c@00ec411c"
+  ],
+  "keys": [
+   "se.ui_cancel",
+   "se.ui_select"
+  ],
+  "implemented": false
+ },
+ "user/user_id": {
+  "functions": [
+   "FUN_0106ed48@0106ed48",
+   "FUN_0106ee5c@0106ee5c"
+  ],
+  "keys": [],
+  "implemented": false
+ },
+ "user_data/data/": {
+  "functions": [
+   "FUN_01079cd8@01079cd8"
+  ],
+  "keys": [
+   "before",
+   "after",
+   "table",
+   "hash",
+   "scripts",
+   "user_data_sync",
+   "user_data"
+  ],
+  "implemented": false
+ },
+ "user_data/local/checksum/": {
+  "functions": [
+   "FUN_01079cd8@01079cd8"
+  ],
+  "keys": [
+   "before",
+   "after",
+   "table",
+   "hash",
+   "scripts",
+   "user_data_sync",
+   "user_data"
+  ],
+  "implemented": false
+ },
+ "user_data/server/checksum/": {
+  "functions": [
+   "FUN_01079cd8@01079cd8"
+  ],
+  "keys": [
+   "before",
+   "after",
+   "table",
+   "hash",
+   "scripts",
+   "user_data_sync",
+   "user_data"
+  ],
+  "implemented": false
+ },
+ "violation/report": {
+  "functions": [
+   "FUN_012afc10@012afc10"
+  ],
+  "keys": [
+   "singularUserId"
+  ],
+  "implemented": false
+ }
+}

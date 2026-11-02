@@ -1,0 +1,67 @@
+# ===== Game content (Bandai Namco): NEVER commit =====
+# your APK, the device dump, extracted/decoded data, built APKs and packs
+*.apk
+*.xapk
+*.apkm
+*.apks
+*.ipa
+*.obb
+*.zip
+*.ab
+*.so
+data/
+dev_data/
+extracted/
+dump/
+build/
+downloads/
+*.manifestenc
+*.bin
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.ogg
+*.mp4
+*.pvr
+*.pkm
+*.ccz
+
+# ===== Secrets: NEVER commit =====
+.env
+*.env
+!.env.example
+server/admin_password.txt
+**/saoub_dev_token.txt
+**/*.pem
+**/*.key
+**/*.keystore
+**/*.jks
+**/id_rsa*
+**/id_ed25519*
+tools/launcher/update_signing_key*
+
+# ===== Player data: databases, logs, backups (device ids, accounts) =====
+*.sqlite3
+*.sqlite3-*
+*.db
+server/logs/
+server/backup_*/
+*.log
+*.jsonl
+logcat_*.txt
+
+# ===== Python / tooling =====
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.claude/
+.vscode/
+.idea/
+
+# ===== OS =====
+Thumbs.db
+desktop.ini
+.DS_Store
