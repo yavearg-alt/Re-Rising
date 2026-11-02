@@ -10,8 +10,8 @@ from saoub_crypto import decrypt, hashed_name  # noqa: E402
 MASTER_TABLES = [
     "area_enemy", "asset", "base", "battle", "custom", "editor", "emblem", "enemy", "environment",
     "equipment", "event", "guild", "home", "imagination", "item", "localization", "login_bonus",
-    "lottery", "map", "message", "mission", "novel", "player", "pvp", "quest", "raid_event",
-    "reward", "scenario", "season", "skill", "spine", "treasure", "tutorial",
+    "lottery", "map", "message", "mission", "novel", "pc", "player", "pvp", "quest", "raid_event",
+    "reward", "scenario", "season", "skill", "spine", "tips", "treasure", "tutorial", "ui",
 ]
 
 if __name__ == "__main__":

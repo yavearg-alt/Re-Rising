@@ -8,7 +8,6 @@ HOST = os.environ.get("SAOUB_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SAOUB_PORT", "8080"))
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-APK_PATH = os.environ.get("SAOUB_APK", os.path.join(ROOT, "SAO+Unleash+Blading_3.7.0_APKPure.apk"))
 # offline XAPK: game files packed in split APKs (assets/saoub_pack/hashed/...), read in place
 PACK_APKS = [p for p in os.environ.get("SAOUB_PACK_APKS", "").split(os.pathsep) if p]
 # files only found in an APK are copied once to server_cache/apk_hashed to be streamed with sendfile; off on the
@@ -19,6 +18,10 @@ APK_FILE_CACHE = os.environ.get("SAOUB_APK_FILE_CACHE", "1") != "0"
 _DEV_DATA = os.path.join(ROOT, "dev_data")
 DATA_DIR = os.environ.get("SAOUB_DATA") or (_DEV_DATA if os.path.isdir(os.path.join(_DEV_DATA, "server_cache"))
                                             else os.path.join(ROOT, "data"))
+# the game's APK assets: SAOUB_APK, else <data>/game.apk (tools/setup_data.py), else the original APK at the root
+APK_PATH = os.environ.get("SAOUB_APK") or next(
+    (p for p in (os.path.join(DATA_DIR, "game.apk"), os.path.join(ROOT, "SAO+Unleash+Blading_3.7.0_APKPure.apk"))
+     if os.path.exists(p)), os.path.join(ROOT, "SAO+Unleash+Blading_3.7.0_APKPure.apk"))
 # BRAND goes out in every game-server response (X-SAOUB-Server) and in the welcome announcement of a new database;
 # INSTANCE identifies this install (server_cache/instance.json, absent on the VPS), sent as X-SAOUB-Instance.
 BRAND = os.environ.get("SAOUB_BRAND", "Re:Rising - SAO Unleash Blading revival server")

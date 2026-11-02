@@ -4,7 +4,7 @@
 # ARM64: config.arm64_v8a.apk or an APKMirror .apkm of 3.7.0 (4728): adds the 64-bit game (tools/patch_apk.py --arm64)
 # FPS: default frame rate baked into the APK (tools/fps_patch.py); without it 60 fps until the launcher sets one
 # CDN_URL: download the game files from another server than the API
-# SAOUB_DATA (default <repo>/data), SAOUB_TOOLS (default $SAOUB_DATA/tools), SAOUB_APK (your original 3.7.0 APK),
+# SAOUB_DATA (default <repo>/data), SAOUB_TOOLS (default $SAOUB_DATA/tools), GAME_APK (an installable 3.7.0 APK),
 # SAOUB_ADB: see README.md
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -14,7 +14,7 @@ B="$DATA/build"
 T="${SAOUB_TOOLS:-$DATA/tools}"
 JDK="$T/jdk-21.0.12.1+1"
 ADB="${SAOUB_ADB:-/c/Program Files/BlueStacks_nxt/HD-Adb.exe}"
-APK="${SAOUB_APK:-SAO+Unleash+Blading_3.7.0_APKPure.apk}"
+APK="${GAME_APK:-SAO+Unleash+Blading_3.7.0_APKPure.apk}"
 mkdir -p "$B"
 ./.venv/Scripts/python tools/patch_apk.py "$APK" "$B/unsigned.apk" "$URL" ${CDN_URL:+"$CDN_URL"} ${ARM64:+--arm64 "$ARM64"}
 ./.venv/Scripts/python tools/fps_patch.py "$B/unsigned.apk" "$B/unsigned_fps.apk" ${FPS:+--fps "$FPS"}

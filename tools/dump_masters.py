@@ -1,6 +1,6 @@
 """Decode every master table into JSON (one file per sub-table) so lookups don't re-run the slow XXTEA decoding.
 
-usage: dump_masters.py <master_final dir> <out dir> [workers]
+usage: dump_masters.py <master_final dir> <out dir> [workers] [table,table,...]   (default: every table)
 Output: <out>/<table>.<sub>.json = list of rows ({field index: value}).
 """
 import json
@@ -30,10 +30,11 @@ def dump(args):
 def main():
     src_dir, out = sys.argv[1], sys.argv[2]
     workers = int(sys.argv[3]) if len(sys.argv) > 3 else os.cpu_count()
+    only = set(sys.argv[4].split(",")) if len(sys.argv) > 4 and sys.argv[4] else None
     os.makedirs(out, exist_ok=True)
     jobs = []
     for fn in sorted(os.listdir(src_dir), key=lambda f: -os.path.getsize(os.path.join(src_dir, f))):
-        if fn.endswith(".bin"):
+        if fn.endswith(".bin") and (only is None or fn[:-4] in only):
             path = os.path.join(src_dir, fn)
             jobs += [(path, out, i) for i in range(len(Master(open(path, "rb").read()).tables()))]
     with ProcessPoolExecutor(workers) as ex:

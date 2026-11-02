@@ -10,9 +10,14 @@ import json
 import os
 import struct
 import sys
+from functools import lru_cache
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from saoub_crypto import xxtea_decrypt  # noqa: E402
+from saoub_crypto import xxtea_decrypt as _xxtea_decrypt  # noqa: E402
+
+# The same encrypted value comes back thousands of times (0, 1, common ids) and XXTEA is deterministic: decoding
+# each distinct blob once makes a full table ~4x faster (tools/dump_masters.py, setup_data.py).
+xxtea_decrypt = lru_cache(maxsize=1 << 18)(_xxtea_decrypt)
 
 
 class Master:

@@ -24,6 +24,7 @@ import hashlib
 import json
 import os
 import queue
+import shutil
 import socket
 import sqlite3
 import subprocess
@@ -318,6 +319,12 @@ class Launcher:
         self.btn_stop.pack(side="left")
         self.home_info = self.label(p, "", 10, MUTED, justify="left")
         self.home_info.pack(anchor="w", pady=(10, 0))
+        if not FROZEN:  # the standalone bundle already ships its game data
+            self.section(p, "Game data")
+            SaoButton(p, "DOWNLOAD GAME DATA", self.download_data, width=260, accent=GOLD).pack(anchor="w")
+            self.label(p, "Fetches the game data from the Internet Archive (~5 GB, ~10 GB free space needed) and builds "
+                          "it into the game data folder (SETTINGS). Resumes if interrupted.", 9, MUTED, justify="left",
+                       wraplength=560).pack(anchor="w", pady=(6, 0))
         self.section(p, "Tools")
         row = tk.Frame(p, bg=BG)
         row.pack(anchor="w")
@@ -479,7 +486,9 @@ class Launcher:
         # the game files bundled in the APK are served from it: without the original APK at the repository root
         # (standalone bundle), use the patched one (same assets/hashed)
         apk = self.var_apk.get().strip()
-        if not os.path.exists(os.path.join(ROOT, "SAO+Unleash+Blading_3.7.0_APKPure.apk")) and os.path.isfile(apk):
+        if not any(os.path.exists(p) for p in (os.path.join(data, "game.apk"),
+                                               os.path.join(ROOT, "SAO+Unleash+Blading_3.7.0_APKPure.apk"))) \
+                and os.path.isfile(apk):
             env["SAOUB_APK"] = apk
         self.append(f"--- starting server on port {port} (data: {data}) ---")
         try:
@@ -490,6 +499,41 @@ class Launcher:
             return messagebox.showerror(TITLE, f"Could not start Python:\n{e}")
         threading.Thread(target=self.read_output, args=(self.proc,), daemon=True).start()
         self.refresh_status()
+
+    def download_data(self):
+        """tools/setup_data.py into the game data folder, its progress in SERVER LOG."""
+        if getattr(self, "setup_proc", None) and self.setup_proc.poll() is None:
+            self.show("logs")
+            return
+        if self.running():
+            return messagebox.showinfo(TITLE, "Stop the server first: the game data folder is being rebuilt.")
+        data = self.var_data.get().strip() or os.path.join(ROOT, "data")
+        os.makedirs(data, exist_ok=True)
+        free = shutil.disk_usage(data).free / 2 ** 30
+        if not messagebox.askyesno(TITLE, f"Download the game data (~5 GB) from the Internet Archive and build it in:\n"
+                                          f"{data}\n\nAbout 10 GB of free space is needed ({free:.0f} GB free). "
+                                          "It can take a while; you can close the launcher and resume later.\n\n"
+                                          "Continue?"):
+            return
+        self.var_data.set(data)
+        self.save_settings()
+        self.append(f"--- downloading the game data into {data} ---")
+        self.show("logs")
+        try:
+            self.setup_proc = subprocess.Popen(
+                [server_python(), "-u", os.path.join(ROOT, "tools", "setup_data.py"), "--data", data], cwd=ROOT,
+                env=dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1"), stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, creationflags=CREATE_NO_WINDOW)
+        except OSError as e:
+            return messagebox.showerror(TITLE, f"Could not start Python:\n{e}")
+
+        def follow(proc):
+            for raw in proc.stdout:
+                self.lines.put(raw.decode("utf-8", "replace").rstrip())
+            code = proc.wait()
+            self.lines.put("--- game data ready: START SERVER ---" if code == 0 else
+                           f"--- game data setup stopped (exit code {code}); click DOWNLOAD GAME DATA to resume ---")
+        threading.Thread(target=follow, args=(self.setup_proc,), daemon=True).start()
 
     def read_output(self, proc):
         for raw in proc.stdout:
