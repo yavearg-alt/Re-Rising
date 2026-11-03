@@ -11,13 +11,27 @@ This repository contains:
 | Local server | `server/` | The game API, asset CDN and GREE login emulation (Python 3.11+, standard library + `msgpack`) |
 | Tests | `tests/` | A fake game client that runs scenarios against the server in-process (`python tests/run.py`) |
 | APK patcher | `tools/patch_apk.py`, `tools/build_apk.sh` | Points **your** copy of the game at your server |
-| Launcher | `SAOUB_Launcher.bat`, `tools/launcher/` | A small Windows window to start/stop the server, back up the database, install the APK into BlueStacks |
+| Launcher | `SAOUB_Launcher.bat`, `tools/launcher/` | A small Windows window to download the game data, start/stop the server, back up the database, install the APK into BlueStacks |
+| Game data setup | `tools/setup_data.py` | Downloads the game data from the Internet Archive and builds everything the server needs, in one command |
 | Data tools | `tools/extract_apk.py`, `tools/extract_dump.py`, `tools/dump_masters.py`, `tools/saoub_crypto.py`, `tools/flatmaster.py` | Decode the game's manifests and master data from your own files |
 | Docs | `docs/` | Protocol notes and API routes |
 
 > **No game content is included, and none may be added.** *SAO Unleash Blading*, *Sword Art Online* and every game
 > file, image, sound, text and data table belong to Bandai Namco Entertainment, Reki Kawahara / KADOKAWA / SAO
 > Project. This project is not affiliated with or endorsed by them. You must supply your own copy of the game.
+
+## Quick start (Windows)
+
+1. Download the [latest release](https://github.com/yavearg-alt/Re-Rising/releases/latest) (**Source code (zip)**) and
+   unzip it.
+2. Install [Python 3.11+](https://www.python.org/downloads/), then in the folder:
+   `python -m venv .venv` and `.venv\Scripts\pip install -r requirements.txt`
+3. Double-click **`SAOUB_Launcher.bat`**, then click **DOWNLOAD GAME DATA** (HOME page). It downloads the game data
+   (~5 GB) from the Internet Archive and builds it into `data/`; the progress shows in SERVER LOG. If it stops, click
+   it again: it resumes.
+4. Click **START SERVER**, then **CONNECT THE GAME** to see the address your patched game must use (section 3 below).
+
+Linux / macOS, or without the launcher: `python tools/setup_data.py`, then `cd server && python main.py`.
 
 ## What you need
 
@@ -47,7 +61,8 @@ The important ones:
 | `SAOUB_ADMIN_PASSWORD` | *(empty = admin panel off)* | Admin panel password (or `server/admin_password.txt`) |
 | `SAOUB_TOOLS` | `$SAOUB_DATA/tools` | JDK / Android build-tools / apktool for `tools/build_apk.sh` |
 
-Then build the game data (one command; resumes if interrupted):
+Then build the game data (one command; resumes if interrupted). The launcher's **DOWNLOAD GAME DATA** button runs
+the same script:
 
 ```bash
 python tools/setup_data.py                     # downloads from the Internet Archive into data/
