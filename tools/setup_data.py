@@ -29,6 +29,8 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
+import time
 import urllib.parse
 import urllib.request
 import zipfile
@@ -39,8 +41,8 @@ sys.path.insert(0, HERE)
 
 ARCHIVE = "https://archive.org/download/gacha-archive/"
 ARCHIVE_DIR = "Online/Sword Art Online - Unleash Blading/"
-DUMP = ("com.bandainamcoent.saoars-3.7.0.4728.zip", "bdfef9d0cd946dbd7b99d16bd0bf52c3")
-XAPK = ("com.bandainamcoent.saoars-3.7.0.4728.xapk", "86de5d8228709d1038836c3866fc2d18")
+DUMP = ("com.bandainamcoent.saoars-3.7.0.4728.zip", "bdfef9d0cd946dbd7b99d16bd0bf52c3", 4525862113)
+XAPK = ("com.bandainamcoent.saoars-3.7.0.4728.xapk", "86de5d8228709d1038836c3866fc2d18", 774069340)
 APP = "data/data/com.bandainamcoent.saoars/files/"
 KEEP = (APP + "contents/hashed/", APP + "contents/manifest/", APP + "ldb/")
 # split names in the archive's XAPK / in an APKMirror .apkm
@@ -70,7 +72,20 @@ def md5_of(path: str) -> str:
     return h.hexdigest()
 
 
-def download(name: str, md5: str, folder: str) -> str:
+def progress(path: str, total: int, stop: threading.Event):
+    """One line every 10 s: the launcher's SERVER LOG shows whole lines only (curl's own meter redraws one line with
+    carriage returns, so it stayed at 0 there)."""
+    last = (time.time(), os.path.getsize(path) if os.path.exists(path) else 0)
+    while not stop.wait(10):
+        now, size = time.time(), os.path.getsize(path) if os.path.exists(path) else 0
+        speed = (size - last[1]) / max(now - last[0], 1e-3)
+        left = f", {(total - size) / speed / 60:.0f} min left" if speed > 0 and total > size else ""
+        print(f"  {size / 2**20:,.0f} / {total / 2**20:,.0f} MB ({100 * size / total:.0f} %), "
+              f"{speed / 2**20:.1f} MB/s{left}", flush=True)
+        last = (now, size)
+
+
+def download(name: str, md5: str, size: int, folder: str) -> str:
     """The archive file `name` in `folder`, downloaded (resumed) when missing or incomplete, MD5-checked."""
     dest = os.path.join(folder, name)
     if os.path.exists(dest) and md5_of(dest) == md5:
@@ -81,11 +96,16 @@ def download(name: str, md5: str, folder: str) -> str:
     print(f"{name}: downloading from the Internet Archive")
     # curl first: resumes (-C -) and uses the system certificate store (Python's own store rejects some
     # archive.org storage nodes)
-    if shutil.which("curl"):
-        subprocess.run(["curl", "-L", "--fail", "-C", "-", "--retry", "5", "-o", dest, url], check=True)
-    else:
-        with urllib.request.urlopen(url, timeout=120) as r, open(dest, "wb") as f:
-            shutil.copyfileobj(r, f, 1 << 22)
+    stop = threading.Event()
+    threading.Thread(target=progress, args=(dest, size, stop), daemon=True).start()
+    try:
+        if shutil.which("curl"):
+            subprocess.run(["curl", "-L", "--fail", "-sS", "-C", "-", "--retry", "5", "-o", dest, url], check=True)
+        else:
+            with urllib.request.urlopen(url, timeout=120) as r, open(dest, "wb") as f:
+                shutil.copyfileobj(r, f, 1 << 22)
+    finally:
+        stop.set()
     got = md5_of(dest)
     if got != md5:
         sys.exit(f"{name}: MD5 {got}, expected {md5} (incomplete or different file: delete it and run again)")
