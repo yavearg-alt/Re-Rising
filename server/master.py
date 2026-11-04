@@ -99,6 +99,16 @@ def _build_event_boss_tickets():
             if r.get(1) and r.get(3) and str(r.get(5) or "").startswith("quest_ticket.")}
 
 
+def _build_pc_imaginations():
+    """pcId -> the character's own Imaginarium (item.bin sub 20 field 8 = pcId, label *_4lb: earned at limit break 4)."""
+    return {str(r[8]): r[0] for r in _json_rows("item", 20) if r.get(8)}
+
+
+def _build_exchangeable_imaginations():
+    """Imaginarium one can get from the Imaginarium exchange (item.bin sub 20 field 10 = 1: the characters' own)."""
+    return sorted(r[0] for r in _json_rows("item", 20) if r.get(10) == 1)
+
+
 def _build_event_seasons():
     """eventId -> [season id, point item] of the event point seasons (season.bin sub 0 rows with an eventId in field
     1: the event's own Battle Pass, e.g. "Unleash Blading" 601101000202 -> 5010220906 / 405220906). Their points are
@@ -572,6 +582,8 @@ EVENT_QUEST_DROPS = _cached("event_quest_drops", _build_event_quest_drops)  # qu
 PVP_RANKS = _cached("pvp_ranks", _build_pvp_ranks)  # pvpId -> [[rank, minimum points]]
 EVENT_BOSS_QUESTS = set(_cached("event_boss_quests", _build_event_boss_quests))  # {"eventId:questId"}
 EVENT_BOSS_TICKETS = _cached("event_boss_tickets", _build_event_boss_tickets)  # "eventId:questId" -> [label, cost]
+PC_IMAGINATIONS = _cached("pc_imaginations", _build_pc_imaginations)  # pcId -> its limit-break-4 Imaginarium
+EXCHANGEABLE_IMAGINATIONS = set(_cached("imagination_exchangeable", _build_exchangeable_imaginations))
 EVENT_SEASONS = _cached("event_seasons", _build_event_seasons)  # eventId -> [event season id, point item]
 EVENT_PLAY_LIMITS = _cached("event_play_limits", _build_event_play_limits)  # eventId -> runs per game day
 BANNERS = _cached("banners", _build_banners)  # release label -> [[lotteryId, jp name, en headline]] (admin panel)

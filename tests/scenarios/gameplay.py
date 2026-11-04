@@ -593,3 +593,21 @@ def test_cube_shop_limit_starts_again(h):
     row = next((r for r in c.t("exchangedItem") if r["exchangeOutputItemId"] == 525600066), {})
     h.expect(row.get("count") == 1, f"Battle Skip après la période : {row}")
     h.expect(any(i["itemId"] == 249000005 and i["amount"] >= 1 for i in c.t("item")), "Battle Skip non reçu")
+
+
+def test_refusals_answer_with_tables(h):
+    """A refused draw / purchase (not enough Diamond Cubes) answered {}: the client waited for the change it expected.
+    It now gets the current rows of the tables involved, and nothing is taken."""
+    c = h.new_player()
+    userdata.add_gems(c.uid, -userdata.gems(c.uid))
+    price = next(int(pid) for pid, p in master.LOTTERY["prices"].items() if p["type"] == 2 and p["cost"] == 250)
+    out = c.call("lottery/draw", {"gemAmount": 250, "lotteryPriceId": price, "step": 0, "ticketAmount": 0,
+                                  "ticketId": 0})
+    h.expect("lotteryPrice" in (out.get("table") or {}).get("replace", {}), f"tirage refusé sans tables : {out}")
+    h.expect(not c.row("lotteryResult").get("resultItems") or c.row("lotteryResult").get("lotteryPriceId") != price,
+             "un tirage sans Diamond Cubes ne doit rien donner")
+    out = c.call("season-reward/unlock", {"seasonRewardId": 5022209100, "cost": 2196})
+    h.expect("item" in (out.get("table") or {}).get("replace", {}), f"achat de niveau refusé sans tables : {out}")
+    h.expect(c.item(405220900) == 0, "points de saison donnés sans payer")
+    out = c.call("equipment/expand", {"addCount": 5, "consumeGem": 50})
+    h.expect("info" in (out.get("table") or {}).get("replace", {}), "agrandissement refusé sans tables")

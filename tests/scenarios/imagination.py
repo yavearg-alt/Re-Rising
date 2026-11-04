@@ -91,3 +91,55 @@ def test_iskahn_and_tales_kirito_imagination(h):
     c.call("login")
     h.expect(any(r["imaginationId"] == 381214004 for r in c.t("imaginationStock")), "Imaginarium de Kirito non déplacé")
     h.expect(c.item(381214004) == 0, "l'objet doit quitter UserItem")
+
+
+def test_limit_break_four_gives_the_character_imagination(h):
+    """A character taken to limit break 4 gets its own Imaginarium (item.20 field 8, label *_4lb), once: nothing
+    gave them (Discord 2026-10-20 / 11-03). Also at login for the characters already at limit break 4."""
+    pc, imag = 130124001, master.PC_IMAGINATIONS["130124001"]
+    c = h.new_player()
+    grant = api.Grant(c.uid)
+    grant.pc(pc)
+    userdata.set_tables(c.uid, grant.changes())
+    c.pull()
+    row = next(p for p in c.t("pc") if p["pcId"] == pc)
+    c.push({"pc": [dict(row, limitBreakCount=3)]})
+    h.expect(not any(r["imaginationId"] == imag for r in c.server_table("imaginationStock")), "trop tôt (limite 3)")
+    c.push({"pc": [dict(row, limitBreakCount=4)]})
+    c.pull()
+    h.expect(sum(1 for r in c.t("imaginationStock") if r["imaginationId"] == imag) == 1,
+             f"Imaginarium de limite 4 : {[r for r in c.t('imaginationStock') if r['imaginationId'] == imag]}")
+    c.push({"pc": [dict(row, limitBreakCount=4, hp=1)]})
+    c.call("login")
+    h.expect(sum(1 for r in c.t("imaginationStock") if r["imaginationId"] == imag) == 1, "donné une seule fois")
+    # an account whose character reached limit break 4 before the fix: given at login
+    d = h.new_player()
+    grant = api.Grant(d.uid)
+    grant.pc(pc)
+    userdata.set_tables(d.uid, grant.changes())
+    rows = [dict(p, limitBreakCount=4) if p["pcId"] == pc else p for p in userdata.table(d.uid, "pc")]
+    userdata.set_tables(d.uid, {"pc": rows})
+    d.pull()
+    d.call("login")
+    h.expect(any(r["imaginationId"] == imag for r in d.t("imaginationStock")), "rattrapage à la connexion")
+
+
+def test_imagination_exchange(h):
+    """imagination/exchange (5 Imaginarium for one character Imaginarium) had no handler: nothing happened. Body
+    copied from a real request."""
+    c = h.new_player()
+    grant = api.Grant(c.uid)
+    grant.reward(7, 380000001, 6)
+    userdata.set_tables(c.uid, grant.changes())
+    c.pull()
+    ids = [r["id"] for r in c.t("imaginationStock") if r["imaginationId"] == 380000001][:5]
+    c.call("imagination/exchange", {"exchangeInputImaginationStockIds": ids, "exchangeOutputImaginationId": 380224001})
+    stock = c.t("imaginationStock")
+    h.expect(not any(r["id"] in ids for r in stock), "les 5 Imaginarium donnés doivent partir")
+    h.expect(sum(1 for r in stock if r["imaginationId"] == 380224001) == 1, f"Imaginarium échangé absent : {stock}")
+    h.expect(sum(1 for r in stock if r["imaginationId"] == 380000001) == 1, "le 6e doit rester")
+    # not owned / not exchangeable: refused, nothing changes
+    before = [dict(r) for r in c.t("imaginationStock")]
+    out = c.call("imagination/exchange", {"exchangeInputImaginationStockIds": [9991, 9992, 9993, 9994, 9995],
+                                          "exchangeOutputImaginationId": 380224001})
+    h.expect("imaginationStock" in out["table"]["replace"] and c.t("imaginationStock") == before, "échange forgé")

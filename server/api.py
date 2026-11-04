@@ -103,7 +103,13 @@ def _user_id(headers: dict) -> int:
 
 
 def ep_user_push(uid, req):
-    return userdata.push(uid, req or {})
+    out = userdata.push(uid, req or {})
+    if out.get("code") or not any("pc" in (c.get("put") or {}) for c in (req or {}).get("table") or []):
+        return out
+    grant = Grant(uid)
+    if limit_break_imaginations(uid, grant):  # a character the client just took to limit break 4
+        out = raid._merge(out, userdata.set_tables(uid, grant.changes()))
+    return out
 
 
 def ep_user_pull(uid, req):
@@ -950,7 +956,7 @@ def ep_lottery_draw(uid, req):
     price_id = int(req.get("lotteryPriceId", 0))
     price = master.LOTTERY["prices"].get(str(price_id))
     if not price:
-        return {}
+        return refused(uid, f"lottery/draw: unknown price {price_id}", ['lotteryPrice'])
     lottery = str(price["lottery"])
     count = 11 if price["type"] == 2 else 1
     gem_cost = int(req.get("gemAmount", 0))
@@ -968,16 +974,16 @@ def ep_lottery_draw(uid, req):
         count = min(ticket_cost, MAX_TICKET_DRAWS, max(1, price["limit"] - drawn) if price["limit"] else MAX_TICKET_DRAWS)
         ticket_cost = 0
     if price["limit"] and drawn + (count if price["type"] != 2 else 1) > price["limit"]:
-        return {}
+        return refused(uid, f"lottery/draw: price {price_id} limit {price['limit']} reached", ['lotteryPrice', 'item'])
     grant = Grant(uid)
     if ticket_id and ticket_cost:
         have = grant.items.get(ticket_id, {}).get("amount", 0)
         if have < ticket_cost:
-            return {}
+            return refused(uid, f"lottery/draw: not enough tickets {ticket_id}", ['lotteryPrice', 'item'])
         grant.item(ticket_id, -ticket_cost)
     if gem_cost:
         if userdata.gems(uid) < gem_cost:
-            return {}
+            return refused(uid, f"lottery/draw: not enough Diamond Cubes ({gem_cost})", ['lotteryPrice', 'item'])
         grant.gems -= gem_cost
     # step-up banners: the current step can boost every draw's rates or guarantee the last draw (11th)
     steps = master.LOTTERY["steps"].get(lottery, {})
@@ -1266,7 +1272,7 @@ def ep_equipment_expand(uid, req):
     req = req or {}
     add, cost = int(req.get("addCount", 0)), int(req.get("consumeGem", 0))
     if cost and userdata.gems(uid) < cost:
-        return {}
+        return refused(uid, f"equipment/expand: not enough Diamond Cubes ({cost})", ['info'])
     if cost:
         userdata.add_gems(uid, -cost)
     info = dict((userdata.table(uid, "info") or [{}])[0])
@@ -1360,7 +1366,7 @@ def ep_item_exchange(uid, req):
         out = ex["out"].get(str(entry.get("id")))
         count = max(int(entry.get("count", 1)), 1)
         if not out:
-            return {}
+            return refused(uid, f"item/exchange: unknown output", ['item', 'exchangedItem'])
         row = done.setdefault(entry["id"], {"userId": uid, "exchangeOutputItemId": entry["id"], "count": 0,
                                             "lastUpdatedAt": 0, "readState": 0})
         if out.get("resets") and game_day(row["lastUpdatedAt"]) != game_day(now):
@@ -1369,17 +1375,17 @@ def ep_item_exchange(uid, req):
             # them (tester report, 2026-10-25). The client keeps its own period; the server starts again each game day.
             row["count"] = 0
         if out["max"] and row["count"] + count > out["max"]:
-            return {}
+            return refused(uid, f"item/exchange: limit reached", ['item', 'exchangedItem'])
         for label, amount in ex["in"].get(str(entry.get("inputGroupItemId") or out["input"]), []):
             cost = amount * count
             if label == "currency.gem":
                 if userdata.gems(uid) + grant.gems < cost:
-                    return {}
+                    return refused(uid, f"item/exchange: not enough Diamond Cubes ({cost})", ['item', 'exchangedItem'])
                 grant.gems -= cost
             else:
                 item_id = ex["labels"].get(label)
                 if item_id is None or grant.items.get(item_id, {}).get("amount", 0) < cost:
-                    return {}
+                    return refused(uid, f"item/exchange: not enough {label} ({cost})", ['item', 'exchangedItem'])
                 grant.item(item_id, -cost)
         for _ in range(count):
             for it in master.REWARDS.get(str(out["reward"]), {}).get("items", []):
@@ -1455,6 +1461,7 @@ def ep_login(uid, req):
         changed = True
     bundled = pass_bundles(uid, grant)  # bundles bought before they were given
     bundled = imagination_backfill(uid, grant) or bundled
+    bundled = limit_break_imaginations(uid, grant) or bundled
     response = {}
     if changed or done or bundled:
         changes = grant.changes()
@@ -1550,7 +1557,7 @@ def ep_pvp_matching(uid, req):
     cost = int(req.get("expectedConsumingBp") or 0) if req.get("reloadFlag") else 0
     if cost:
         if me["bp"] < cost:
-            return {}
+            return refused(uid, f"pvp/matching: not enough BP ({cost})", ['pvp', 'pvpStatus'])
         me.update(bp=me["bp"] - cost, bpUpdatedAt=int(config.now()))
     with open(os.path.join(userdata.TEMPLATE_DIR, "UserPvpStatus.json"), encoding="utf-8") as f:
         status = userdata._rekey(json.load(f), uid)
@@ -1794,7 +1801,7 @@ def ep_season_reward_unlock(uid, req):
     tier = master.SEASON["rewards"].get(str(int(req.get("seasonRewardId") or 0)))
     point_item = master.SEASON.get("pointItems", {}).get(str((tier or {}).get("season", 0)))
     if not tier or not point_item or (cost and userdata.gems(uid) < cost):
-        return {}
+        return refused(uid, f"season-reward/unlock: refused (tier {req.get('seasonRewardId')}, cost {cost})", ['item'])
     if cost:
         userdata.add_gems(uid, -cost)
     grant = Grant(uid)
@@ -1806,7 +1813,7 @@ def ep_season_reward_unlock(uid, req):
 
 def _purchase(uid: int, table: str, key: str, item_id: int, cost: int, extra: dict) -> dict:
     if cost and userdata.gems(uid) < cost:
-        return {}
+        return refused(uid, f"{table}: not enough Diamond Cubes ({cost})", [table])
     if cost:
         userdata.add_gems(uid, -cost)
     rows = {r[key]: dict(r) for r in userdata.table(uid, table)}
@@ -1845,6 +1852,53 @@ def is_imagination(item_id: int) -> bool:
     """Imaginarium ids (item.20 / imagination.*): 380xxxxxx, and 381xxxxxx for the Iskahn and Tales of ARISE Kirito
     ones. The 381 ones were missed, so they went to UserItem and never showed (tester report, Discord 2026-10-28)."""
     return 380000000 <= int(item_id) < 382000000
+
+
+LIMIT_BREAK_IMAGINATION = 4
+
+
+def limit_break_imaginations(uid: int, grant) -> bool:
+    """A character at limit break 4 gets its own Imaginarium (master.PC_IMAGINATIONS, label *_4lb), once per
+    character, unless the account already holds it. The client limit-breaks locally and pushes UserPC; nothing gave
+    them ("we don't get Imaginarium from duplicates", Discord 2026-10-20 / 11-03: hundreds of characters at limit break 4
+    without theirs). Run at each push of UserPC and at login."""
+    owned = {r.get("imaginationId") for r in grant.imaginations}
+    given = False
+    for p in grant.pcs:
+        imag = master.PC_IMAGINATIONS.get(str(p.get("pcId")))
+        if not imag or (p.get("limitBreakCount") or 0) < LIMIT_BREAK_IMAGINATION:
+            continue
+        flag = f"lb4_imagination_{p.get('pcId')}"
+        if userdata.counter(uid, flag):
+            continue
+        userdata.set_counter(uid, flag, 1)
+        if imag not in owned:
+            grant.imagination(imag, 1)
+            owned.add(imag)
+            given = True
+    return given
+
+
+IMAGINATION_EXCHANGE_INPUTS = 5  # the client sends 5 Imaginarium for one
+
+
+def ep_imagination_exchange(uid, req):
+    """{"exchangeInputImaginationStockIds": [5 stock ids], "exchangeOutputImaginationId"}: 5 Imaginarium for one
+    character Imaginarium (master.EXCHANGEABLE_IMAGINATIONS). The route had no handler: nothing happened (server
+    log, 2026-11-01)."""
+    req = req or {}
+    ids = [int(i) for i in req.get("exchangeInputImaginationStockIds") or []]
+    out_id = int(req.get("exchangeOutputImaginationId") or 0)
+    stock = [dict(r) for r in userdata.table(uid, "imaginationStock")]
+    owned = {r.get("id"): r for r in stock}
+    if out_id not in master.EXCHANGEABLE_IMAGINATIONS:
+        return refused(uid, f"imagination/exchange: {out_id} is not exchangeable", ["imaginationStock"])
+    if len(set(ids)) != len(ids) or len(ids) < IMAGINATION_EXCHANGE_INPUTS or any(i not in owned for i in ids):
+        return refused(uid, f"imagination/exchange: bad inputs {ids}", ["imaginationStock"])
+    grant = Grant(uid)
+    grant.imaginations = [r for r in grant.imaginations if r.get("id") not in set(ids)]
+    grant.imagination(out_id, 1)
+    return userdata.set_tables(uid, grant.changes())
 
 
 def imagination_backfill(uid: int, grant) -> bool:
@@ -1911,13 +1965,13 @@ def ep_lottery_point_exchange(uid, req):
     item_id = int(req.get("lotteryItemId") or 0)
     it = master.LOTTERY["itemIndex"].get(str(item_id))
     if not it:
-        return {}
+        return refused(uid, f"lottery point exchange: unknown item {item_id}", ['item'])
     point_item = master.LOTTERY["exchangeLottery"].get(str(it["lottery"]))
     grant = Grant(uid)
     cost = it["pointCost"] * max(int(req.get("count") or 1), 1)
     if point_item and cost:
         if grant.items.get(point_item, {}).get("amount", 0) < cost:
-            return {}
+            return refused(uid, f"lottery point exchange: not enough points ({cost})", ['item'])
         grant.item(point_item, -cost)
     # the result screen opened after the exchange looks the price up: 0 crashed the client right after the
     # exchange (null pointer, [闇を制する者] Eydis 31227910001, 2026-10-17); echo the request's price
@@ -1936,7 +1990,7 @@ def ep_lottery_select(uid, req):
     ticket = int(req.get("ticketId") or price.get("ticket") or 0)
     if ticket:
         if grant.items.get(ticket, {}).get("amount", 0) < 1:
-            return {}
+            return refused(uid, f"lottery/select: no ticket {ticket}", ['item'])
         grant.item(ticket, -1)
     result = _lottery_result(uid, price_id, [int(req.get("lotteryItemId") or 0)], grant)
     changes = grant.changes()
@@ -1978,7 +2032,7 @@ def ep_item_custom_exchange(uid, req):
     (the lowest one owned); the unlocked customization is kept as an item."""
     item_id = int((req or {}).get("exchangeItemId") or 0)
     if not item_id:
-        return {}
+        return refused(uid, "item custom exchange: no item", ['item'])
     grant = Grant(uid)
     for mat in CUSTOM_MATERIALS:
         if grant.items.get(mat, {}).get("amount", 0) > 0:
@@ -1986,6 +2040,14 @@ def ep_item_custom_exchange(uid, req):
             break
     grant.item(item_id, 1)
     return userdata.set_tables(uid, grant.changes())
+
+
+def refused(uid: int, why: str, tables) -> dict:
+    """A refused purchase / exchange / draw (not enough Diamond Cubes, tickets, points, a limit reached): logged, and
+    answered with the current rows of the tables involved. An empty answer left the client waiting for the change
+    it expected (the quest screen froze on a boost bought without enough Col, Discord 2026-10-30)."""
+    print(f"REFUSED uid={uid} {why}", flush=True)
+    return userdata.set_tables(uid, {t: list(userdata.table(uid, t)) for t in tables})
 
 
 def ep_quest_boost_item_purchase(uid, req):
@@ -2109,6 +2171,7 @@ ENDPOINTS = {
     "/season-reward/unlock": ep_season_reward_unlock,
     "/season-point-boost/buy": ep_season_point_boost_buy,
     "/premium-pass/buy": ep_premium_pass_buy,
+    "/imagination/exchange": ep_imagination_exchange,
     "/lottery/point/exchange": ep_lottery_point_exchange,
     "/lottery/select": ep_lottery_select,
     "/lottery/pickup/select": ep_lottery_pickup_select,

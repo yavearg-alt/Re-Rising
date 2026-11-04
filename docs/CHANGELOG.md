@@ -25,7 +25,12 @@
   move to the Imaginarium stock at the next login.
 - **Event point seasons** ("Unleash Blading"): event quests now give their event season points.
 - **One-time campaign login bonuses** giving an illustration or a character no longer come back every day.
+- **Refused draws / purchases / exchanges** (not enough Diamond Cubes, tickets or points, limit reached) answer with
+  the current tables instead of an empty answer the game kept waiting on, and the reason is logged (`REFUSED`).
+- **Limit break 4** gives the character's own Imaginarium (once; at login for characters already there).
+- **`imagination/exchange`**: 5 Imaginarium for one character Imaginarium (the route had no handler).
 - New: **`update_from_git.bat`** updates a git clone of this repository (refuses to run over local edits, refreshes
   the Python packages when `requirements.txt` changed).
 - New server caches built at the first start: `master_event_play_limits.json`, `master_equipment_statless.json`,
-  `master_pvp_rank_rows2.json`, `master_event_seasons.json`, `master_login_bonus_once.json`.
+  `master_pvp_rank_rows2.json`, `master_event_seasons.json`, `master_login_bonus_once.json`,
+  `master_pc_imaginations.json`, `master_imagination_exchangeable.json`.
