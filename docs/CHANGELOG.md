@@ -29,8 +29,10 @@
   the current tables instead of an empty answer the game kept waiting on, and the reason is logged (`REFUSED`).
 - **Limit break 4** gives the character's own Imaginarium (once; at login for characters already there).
 - **`imagination/exchange`**: 5 Imaginarium for one character Imaginarium (the route had no handler).
+- **Beginner's Residence lessons**: the imposed Lv100 partner now has its skills and limit break (it had none, so
+  "Try Using Skill Link / Charge Stack / Break Stack" could not be done).
 - New: **`update_from_git.bat`** updates a git clone of this repository (refuses to run over local edits, refreshes
   the Python packages when `requirements.txt` changed).
 - New server caches built at the first start: `master_event_play_limits.json`, `master_equipment_statless.json`,
   `master_pvp_rank_rows2.json`, `master_event_seasons.json`, `master_login_bonus_once.json`,
-  `master_pc_imaginations.json`, `master_imagination_exchangeable.json`.
+  `master_pc_imaginations.json`, `master_imagination_exchangeable.json`, `master_quest_guests2.json`.

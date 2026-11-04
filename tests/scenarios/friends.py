@@ -79,3 +79,23 @@ def test_imposed_supporter(h):
                            "supporterUserId": c.t("guest")[0]["guestUserId"]})
     h.expect(c.row("questSupporterSlot").get("pc", {}).get("pcId") == 130114020,
              f"questSupporterSlot de la leçon : {c.row('questSupporterSlot')}")
+
+
+def test_lesson_supporter_has_its_skills(h):
+    """The lessons' imposed supporter (Lv100, limit break 4 in quest.bin sub 9) came with no skill (slotSkills
+    empty): "Try Using Skill Link / Charge Stack / Break Stack" asked for a skill nobody had (soft lock, Discord
+    2026-10-24). It now has every skill slot its level and limit break allow (pc.bin sub 5)."""
+    c = h.new_player()
+    c.call("quest/supporter", {"level": 1, "questId": 8014061006})  # Try Using Charge Stack
+    pc = c.t("guest")[0]["pc"][0]
+    h.expect(pc["limitBreakCount"] == 4 and len(pc["slotSkills"]) >= 10, f"soutien de leçon : {pc['limitBreakCount']}, "
+             f"{len(pc['slotSkills'])} compétences")
+    h.expect(all(s["pcSlotSkillId"] // 10000 == 2 * 10 ** 7 + pc["pcId"] % 10 ** 7 for s in pc["slotSkills"]),
+             "compétences d'un autre personnage")
+    c.call("quest/start", {"boostItemIds": [], "eventId": 0, "level": 1, "partyId": 1, "questId": 8014061006,
+                           "supporterPcId": pc["pcId"], "supporterPcSlotId": 1,
+                           "supporterUserId": c.t("guest")[0]["guestUserId"]})
+    slot_pc = c.row("questSupporterSlot").get("pc", {})
+    h.expect(len(slot_pc.get("slotSkills") or []) >= 10, f"questSupporterSlot sans compétences : {slot_pc}")
+    # the tutorials' level-1 supporters are unchanged
+    c.call("quest/supporter", {"level": 1, "questId": 8011011002})

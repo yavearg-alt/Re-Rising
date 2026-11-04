@@ -1172,13 +1172,16 @@ def quest_guest_rows(uid: int, quest_id: int) -> list:
     with open(os.path.join(userdata.TEMPLATE_DIR, "UserInfo.json"), encoding="utf-8") as f:
         info_template = json.load(f)
     rows = []
-    for i, (_, pc_id, level, name) in enumerate(master.QUEST_GUESTS.get(str(quest_id), []), 1):
+    for i, (_, pc_id, level, name, limit_break, slot_skills) in enumerate(master.QUEST_GUESTS.get(str(quest_id), []), 1):
         # an id below 1000 makes it an NPC for the client (FUN_0128a7ec); a player id (900000000101) made it an
         # ordinary supporter, whose incarnate is only allowed for mutual friends: the lesson's INC button did
         # nothing (soft lock, 2026-10-17)
         gid = i
         exp = max([e for lv, e in master.PC_LEVEL_EXP if lv <= level], default=0)
-        pc = dict(new_pc(gid, pc_id), totalExp=exp,
+        # with its skills and limit break (quest.bin sub 9 field 12): an empty slotSkills left the lesson's supporter
+        # without the skill the lesson asks for ("Try Using Skill Link / Charge Stack...": impossible, soft lock,
+        # tester report, Discord 2026-10-24)
+        pc = dict(new_pc(gid, pc_id), totalExp=exp, limitBreakCount=limit_break, slotSkills=slot_skills,
                   **dict(zip(("hp", "mp"), master.pc_max_hp_mp(pc_id, exp))))
         info = dict(info_template, userId=gid, name=name, profilePcId=pc_id, homePcId=pc_id,
                     lastLoginedAt=int(config.now()), comment="")

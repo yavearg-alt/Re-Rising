@@ -155,12 +155,25 @@ def _build_tower_floor_rewards():
 
 
 def _build_quest_guests():
-    """Quests with an imposed supporter (quest.bin sub 9, questSupporter: 1 questId, 4 pcId, 5 level, 6 name):
-    questId -> [[row id, pcId, level, name], ...] (tutorials, Beginner's Residence lessons)."""
+    """Quests with an imposed supporter (quest.bin sub 9, questSupporter: 1 questId, 4 pcId, 5 level, 6 name,
+    12 limit break): questId -> [[row id, pcId, level, name, limit break, slotSkills], ...] (tutorials, Beginner's
+    Residence lessons). slotSkills: every skill slot of the character (pc.bin sub 5: 2 slot, 3 skill level, 5
+    character level needed, 8 limit break needed) at the best level the supporter's level and limit break allow."""
+    skills = {}
+    for r in _json_rows("pc", 5):
+        skills.setdefault(r.get(1), []).append(r)
     out = {}
     for r in _json_rows("quest", 9):
         if r.get(1) and r.get(4):
-            out.setdefault(str(r[1]), []).append([r[0], r[4], r.get(5) or 1, r.get(6) or ""])
+            level, lb = r.get(5) or 1, r.get(12) or 0
+            best = {}
+            for s in skills.get(r[4], []):
+                if (s.get(5) or 0) <= level and (s.get(8) or 0) <= lb and s.get(3, 0) > best.get(s.get(2), [0])[0]:
+                    best[s.get(2)] = [s.get(3), s[0]]
+            # only the lessons' level-100 supporters: the tutorial ones (level 1) work as they are
+            slots = [{"slot": slot, "level": lv, "pcSlotSkillId": sid, "isExtraSlot": False}
+                     for slot, (lv, sid) in sorted(best.items())] if level > 1 else []
+            out.setdefault(str(r[1]), []).append([r[0], r[4], level, r.get(6) or "", lb, slots])
     return out
 
 
@@ -608,7 +621,7 @@ def _build_banner_images():
 
 BANNER_IMAGES = _cached("banner_images", _build_banner_images)  # lotteryId -> [[path, key]] (admin panel)
 TOWER_EVENT_QUESTS = _cached("tower_event_quests", _build_tower_event_quests)  # "eventId:questId" -> towerEventQuestId
-QUEST_GUESTS = _cached("quest_guests", _build_quest_guests)  # questId -> [[id, pcId, level, name]]
+QUEST_GUESTS = _cached("quest_guests2", _build_quest_guests)  # questId -> [[id, pcId, level, name, lb, skills]]
 PVP_RANK_ROWS = _cached("pvp_rank_rows2", _build_pvp_rank_rows)  # "pvpId:rank" -> result bonuses and rewards
 TOWER_FLOOR_REWARDS = _cached("tower_floor_rewards", _build_tower_floor_rewards)  # questId -> first-clear group
 TOWER_FLOORS = _cached("tower_floors", _build_tower_floors)  # eventId -> [[towerEventQuestId, towerLevel, top floor]]
