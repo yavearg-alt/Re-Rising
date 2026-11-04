@@ -91,6 +91,23 @@ def test_invite_reject_and_cancel(h):
     a.call("guild/join/request/accept", {"requestUserId": b.uid}, expect_code=G.ERR_REQUEST_GONE)
 
 
+def test_invites_received_show_the_guild(h):
+    """The invitation screen reads the inviting guild's UserGuild row: without it, opening the invitations crashed
+    the game (Discord 2026-10-30). Same for a pending join request."""
+    a, b, c = h.new_player(), h.new_player(), h.new_player()
+    gid = _form(h, a)
+    a.call("guild/invite", {"invitedUserId": b.uid})
+    b.call("guild/invite/list")
+    h.expect(any(r.get("guildId") == gid for r in b.t("guildMemberInviteReceive")), "invitation reçue absente")
+    h.expect(any(r.get("guildId") == gid for r in b.t("guild")), f"guilde invitante absente de UserGuild : {b.t('guild')}")
+    h.expect(any(r.get("guestUserId") == a.uid for r in b.t("guest")), "profil de l'inviteur absent")
+    h.expect(b.row("info").get("guildId", 0) == 0, "une invitation ne doit pas rendre membre")
+    c.call("guild/join/request", {"guildId": gid})
+    h.expect(any(r.get("guildId") == gid for r in c.t("guild")), "guilde demandée absente de UserGuild")
+    b.call("guild/invite/accept", {"guildId": gid})
+    h.expect(b.row("info").get("guildId") == gid, "invitation acceptée : membre")
+
+
 def test_other_guild_routes(h):
     a, b = h.new_player(), h.new_player()
     gid = _form(h, a)

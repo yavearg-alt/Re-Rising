@@ -209,6 +209,19 @@ def test_boost_item_purchase(h):
     h.expect(c.item(GOLD) == 0, f"or restant {c.item(GOLD)}, 0 attendu")
 
 
+def test_boost_item_purchase_without_gold_answers(h):
+    """Not enough gold: nothing bought, but the item table is sent (an empty answer froze the quest screen, Discord
+    2026-10-30 "Freeze with skip ticket and Shia boost")."""
+    c = h.new_player()
+    shia = 249000001
+    price = master.BOOST_ITEMS[str(shia)]
+    c.push({"item": [{"userId": c.uid, "itemId": GOLD, "amount": price - 1, "reservedAmount": 0, "readState": 0}]})
+    owned = c.item(shia)
+    out = c.call("quest/boost-item/purchase", {"boostItemIds": [shia]})
+    h.expect("item" in (out.get("table") or {}).get("replace", {}), f"table item absente de la réponse : {out}")
+    h.expect(c.item(shia) == owned and c.item(GOLD) == price - 1, "achat sans assez d'or")
+
+
 def test_guest_search(h):
     c = h.new_player()
     c.call("quest/supporter", {"level": 1, "questId": 8011012001})

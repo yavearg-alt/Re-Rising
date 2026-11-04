@@ -51,3 +51,18 @@ def test_current_ap_formula(h):
     h.expect(api.current_ap(info, 1000 + 360) == (12, 1360), "360 s : +2 AP")
     h.expect(api.current_ap(info, 1000 + 10 ** 6)[0] == top, "plafonnée au max du rang")
     h.expect(api.current_ap(info, 500)[0] == 10, "horloge qui recule : jamais moins")
+
+
+def test_ap_reward_adds_to_current_ap(h):
+    """A "+50 AP" mission reward (login time bonus, rewardType 6) goes on top of the AP recovered since
+    baseApUpdatedAt: it was added to the stored value, so 87 AP became 104 (Discord 2026-10-28)."""
+    c = h.new_player()
+    mid = 15000050001
+    rows = [dict(r, state=3) if r["missionId"] == mid else r for r in userdata.table(c.uid, "mission")]
+    h.expect(any(r["missionId"] == mid for r in rows), "mission +50 AP absente du compte neuf")
+    userdata.set_tables(c.uid, {"mission": rows})
+    _set_ap(c, 10, 30 * 60 + 100)  # 10 stored 30 min ago = 20 AP now
+    c.call("mission/receive", {"missionIds": [mid]})
+    info = c.row("info")
+    h.expect(info["baseAp"] == 70, f"AP après +50 : {info['baseAp']} (70 attendus)")
+    h.expect(int(config.now()) - info["baseApUpdatedAt"] in range(99, 103), "la fraction de minute doit être gardée")

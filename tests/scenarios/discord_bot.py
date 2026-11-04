@@ -306,7 +306,21 @@ def test_model_only_equipment_refused(h):
     out = claim(h, did, "equipment", "370109160")
     h.expect(out.get("error") == "not_claimable", f"arme 3D réclamable : {out}")
     listed = {k for k, _ in call(h, "/bot/equipment", method="GET")["equipment"]}
-    h.expect("370109160" not in listed and "370100000" in listed, "liste d'équipement du bot")
+    h.expect("370109160" not in listed and "370103300" in listed, "liste d'équipement du bot")
+
+
+def test_statless_equipment_refused(h):
+    """Weapons with no stats (NPC / enemy weapons) came as an empty outline that crashed the blacksmith: 370103590
+    FD Kirito's greatsword (tester report, 2026-10-28). Not offered, not claimable; real weapons still are."""
+    import botapi  # noqa: PLC0415
+    c, did = linked_player(h)
+    for eid in ("370103590", "370101920", "370100000"):
+        out = claim(h, did, "equipment", eid)
+        h.expect(out.get("error") == "not_claimable", f"arme sans stats {eid} réclamable : {out}")
+    listed = {k for k, _ in call(h, "/bot/equipment", method="GET")["equipment"]}
+    h.expect("370103590" not in listed, "arme sans stats proposée par le bot")
+    out = claim(h, did, "equipment", "370103300")
+    h.expect(out.get("ok"), f"une vraie arme doit rester réclamable : {out}")
 
 
 def _transfer_setup(h):

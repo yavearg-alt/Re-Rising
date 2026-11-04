@@ -190,10 +190,27 @@ def placeholder_pcs() -> set:
     return _names_cache["placeholders"]
 
 
+def _build_statless_equipment() -> list:
+    """Equipment with no stats at all (equipment.bin sub 6 with none of the stat fields 16-32: weapons use 19-32,
+    armors and accessories 16-30) and not flagged field 63 (the exchange shop's token sword): the weapons of NPCs and
+    enemies (Kirito OS, Object Eraser, FD Kirito's greatsword...) and the "(3D)" models. The client cannot build
+    them as player equipment."""
+    return sorted(str(r[0]) for r in master._json_rows("equipment", 6)
+                  if not r.get(63) and not any(r.get(f) for f in range(16, 33)))
+
+
 def model_only_equipment() -> set:
-    """The "(3D)" weapons (label *_3d): models for the battle scenes, with no icon nor stats. Claimed, they showed as
-    empty equipment (sun, tester report, 2026-10-25)."""
-    return {k for k, v in master.NAMES.get("equipment", {}).items() if str(v).rstrip(")").endswith("_3d")}
+    """Equipment that is not a player's weapon: the "(3D)" weapons (label *_3d, models for the battle scenes with no
+    icon nor stats: claimed, they showed as empty equipment, tester report, 2026-10-25) and every weapon with no stats
+    (370103590 FD Kirito's greatsword came as an empty outline that crashed the blacksmith, tester report,
+    2026-10-28)."""
+    if "statless" not in _names_cache:
+        try:
+            _names_cache["statless"] = set(master._cached("equipment_statless", _build_statless_equipment))
+        except (OSError, ValueError):
+            _names_cache["statless"] = set()
+    return {k for k, v in master.NAMES.get("equipment", {}).items()
+            if str(v).rstrip(")").endswith("_3d")} | _names_cache["statless"]
 
 
 def character_choices() -> list:
@@ -428,7 +445,7 @@ def create_claim(discord_id: str, discord_name: str, kind: str, target=None, amo
         if not raw.isdigit() or not admin.name_of("equipment", raw):
             return _err("unknown_equipment", "Unknown equipment: pick one from the suggestions.")
         if raw in model_only_equipment():
-            return _err("not_claimable", "This equipment is a 3D model of the game with no icon or stats: it cannot be "
+            return _err("not_claimable", "This equipment is a 3D model or an NPC weapon with no stats: it cannot be "
                                          "claimed.")
         target = int(raw)
     else:

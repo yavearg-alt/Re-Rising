@@ -67,3 +67,27 @@ def test_imagination_backfill_at_login(h):
     # sent as an item now: becomes a real Imaginarium
     api.add_gift(c.uid, 1, SACHI_IMAG, 1)
     h.expect(userdata.table(c.uid, "gift")[-1]["rewardType"] == 7, "Imaginarium offert en type 1")
+
+
+def test_iskahn_and_tales_kirito_imagination(h):
+    """The Iskahn and Tales of ARISE Kirito Imaginarium are 381xxxxxx: they were not recognised, so a gift or a
+    claim put them in UserItem, never shown (tester report, Discord 2026-10-28). Now Imaginarium, and the ones already in
+    UserItem move to the stock at the next login."""
+    for imag in (381214001, 381214004):
+        h.expect(api.is_imagination(imag), f"{imag} doit être un Imaginarium")
+    c = h.new_player()
+    api.add_gift(c.uid, 1, 381214001, 1)
+    c.pull()
+    gift = next(g for g in c.t("gift") if g["itemId"] == 381214001)
+    h.expect(gift["rewardType"] == 7, f"cadeau en rewardType {gift['rewardType']}, 7 attendu")
+    c.call("gift/receive", {"giftIds": [gift["id"]]})
+    h.expect(any(r["imaginationId"] == 381214001 for r in c.t("imaginationStock")), "Imaginarium d'Iskahn non reçu")
+    # an account that got one as a plain item before the fix (the one-time backfill already ran)
+    userdata.set_counter(c.uid, "imagination_backfill", 1)
+    items = [dict(r) for r in userdata.table(c.uid, "item")] + [
+        {"userId": c.uid, "itemId": 381214004, "amount": 1, "reservedAmount": 0, "readState": 0}]
+    userdata.set_tables(c.uid, {"item": items})
+    c.pull()
+    c.call("login")
+    h.expect(any(r["imaginationId"] == 381214004 for r in c.t("imaginationStock")), "Imaginarium de Kirito non déplacé")
+    h.expect(c.item(381214004) == 0, "l'objet doit quitter UserItem")

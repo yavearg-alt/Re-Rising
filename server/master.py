@@ -99,6 +99,20 @@ def _build_event_boss_tickets():
             if r.get(1) and r.get(3) and str(r.get(5) or "").startswith("quest_ticket.")}
 
 
+def _build_event_seasons():
+    """eventId -> [season id, point item] of the event point seasons (season.bin sub 0 rows with an eventId in field
+    1: the event's own Battle Pass, e.g. "Unleash Blading" 601101000202 -> 5010220906 / 405220906). Their points are
+    the results' eventSeasonPoint."""
+    return {str(r[1]): [r[0], r.get(2) or 0] for r in _json_rows("season", 0) if r.get(1) and r.get(2)}
+
+
+def _build_event_play_limits():
+    """eventId -> runs allowed per game day (event.bin sub 0 field 4, with field 5 = 1): the material collection
+    events (Vigil Key, Growth Plant, Blessing of EXP: 5 a day). The client shows "limit - UserEventProgress.playCount"
+    for the current day."""
+    return {str(r.get(0)): r.get(4) for r in _json_rows("event", 0) if r.get(0) and r.get(4) and r.get(5) == 1}
+
+
 def _build_banners():
     """Scout banners for the admin panel's Banners tab: release label -> [[lotteryId, Japanese name, English
     headline], ...] (lottery.bin sub 1: field 3 name, 12 release label; English from the localization
@@ -144,7 +158,8 @@ def _build_pvp_rank_rows():
     """Ordinal result per season and rank: "pvpId:rank" -> pvp.bin sub 1 fields the result screen uses: 4 rank
     points, turn bonus (x10000) by turns (9 -> 10, 11 -> 12, 13 -> 14, else 15; the client grades it S-C against
     10/12/14), opponent bonus (x10000) 16 rank above / 17 same / 18 below, reward groups 19 win, 20 BP bonus,
-    21 first time at this rank."""
+    21 first time at this rank, consecutive-win bonus points 6 from the field-5-th win in a row (2: 30 at rank 1 ...
+    160 at rank 9)."""
     out = {}
     for r in _json_rows("pvp", 1):
         out[f"{r.get(1)}:{r.get(2)}"] = {
@@ -153,7 +168,8 @@ def _build_pvp_rank_rows():
                       [r.get(13) or 0, r.get(14) or 10000]],
             "slowTurn": r.get(15) or 10000,
             "enemy": [r.get(16) or 10000, r.get(17) or 10000, r.get(18) or 10000],
-            "win": r.get(19) or 0, "bp": r.get(20) or 0, "first": r.get(21) or 0}
+            "win": r.get(19) or 0, "bp": r.get(20) or 0, "first": r.get(21) or 0,
+            "streakFrom": r.get(5) or 0, "streak": r.get(6) or 0}
     return out
 
 
@@ -448,6 +464,11 @@ def _build_login_bonus():
     return out
 
 
+def _build_login_bonus_once():
+    """Campaign login bonuses that run once (login_bonus.bin sub 0 field 4 = 1)."""
+    return sorted(r[0] for r in _json_rows("login_bonus", 0) if r.get(4) == 1)
+
+
 def _build_season():
     """season.bin: sub 1 rewards (0 id, 1 seasonId, 2 track (absent free, 2 premium), 3 tier, 4 points, 5 rewardGroupId,
     6 times the extra tier 101 can be received, kept as "cost"), sub 2 point boosts (4 cost), sub 3 premium passes
@@ -551,6 +572,8 @@ EVENT_QUEST_DROPS = _cached("event_quest_drops", _build_event_quest_drops)  # qu
 PVP_RANKS = _cached("pvp_ranks", _build_pvp_ranks)  # pvpId -> [[rank, minimum points]]
 EVENT_BOSS_QUESTS = set(_cached("event_boss_quests", _build_event_boss_quests))  # {"eventId:questId"}
 EVENT_BOSS_TICKETS = _cached("event_boss_tickets", _build_event_boss_tickets)  # "eventId:questId" -> [label, cost]
+EVENT_SEASONS = _cached("event_seasons", _build_event_seasons)  # eventId -> [event season id, point item]
+EVENT_PLAY_LIMITS = _cached("event_play_limits", _build_event_play_limits)  # eventId -> runs per game day
 BANNERS = _cached("banners", _build_banners)  # release label -> [[lotteryId, jp name, en headline]] (admin panel)
 
 
@@ -574,7 +597,7 @@ def _build_banner_images():
 BANNER_IMAGES = _cached("banner_images", _build_banner_images)  # lotteryId -> [[path, key]] (admin panel)
 TOWER_EVENT_QUESTS = _cached("tower_event_quests", _build_tower_event_quests)  # "eventId:questId" -> towerEventQuestId
 QUEST_GUESTS = _cached("quest_guests", _build_quest_guests)  # questId -> [[id, pcId, level, name]]
-PVP_RANK_ROWS = _cached("pvp_rank_rows", _build_pvp_rank_rows)  # "pvpId:rank" -> result bonuses and rewards
+PVP_RANK_ROWS = _cached("pvp_rank_rows2", _build_pvp_rank_rows)  # "pvpId:rank" -> result bonuses and rewards
 TOWER_FLOOR_REWARDS = _cached("tower_floor_rewards", _build_tower_floor_rewards)  # questId -> first-clear group
 TOWER_FLOORS = _cached("tower_floors", _build_tower_floors)  # eventId -> [[towerEventQuestId, towerLevel, top floor]]
 MISSIONS = _cached("missions2", _build_missions)  # missionId -> [type, category, target, ..., server-tracked]
@@ -594,6 +617,7 @@ ENEMY_DROPS = _cached("enemy_drops2", _build_enemy_drops)  # "tier:questLevel" -
 PC_STATS = _cached("pc_stats", _build_pc_stats)  # pcId -> [base hp, base mp]
 EXCHANGE = _cached("exchange3", _build_exchange)  # {"out": {id}, "in": {group}, "labels": {label: itemId}}
 LOGIN_BONUS = _cached("login_bonus", _build_login_bonus)  # loginBonusId -> {day: rewardGroupId}
+LOGIN_BONUS_ONCE = set(_cached("login_bonus_once", _build_login_bonus_once))  # campaign bonuses that run once
 PC_CURVES = _cached("pc_curves", _build_pc_curves)  # pcId -> [[level, hp, mp], ...]
 PC_LEVEL_EXP = _cached("pc_level_exp", _build_pc_level_exp)  # [[level, total exp], ...]
 

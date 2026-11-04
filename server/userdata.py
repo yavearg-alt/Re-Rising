@@ -275,7 +275,10 @@ def push(user_id: int, body: dict) -> dict:
 # when it is the default row (reinstall / new device): then the saved one is restored.
 # UserHomeSetting likewise: home customization and the card illustrations (favoriteCardSlots.limitBreakCount) came
 # back after a reboot (tester report, 2026-10-17; one account's pulls never matched the server's hash in a whole day).
-CLIENT_OWNED = {"setting", "homeSetting"}
+# UserLotteryInfo too: the client marks the scout banners seen (readState) without pushing them; the server's copy
+# (empty on every account checked) came back at every boot and every banner showed "New" again (tester report,
+# Discord 2026-10-31).
+CLIENT_OWNED = {"setting", "homeSetting", "lotteryInfo"}
 
 
 def default_hash(name: str, user_id: int) -> str:

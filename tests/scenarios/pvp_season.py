@@ -207,3 +207,44 @@ def test_season_extra_tier_repeats(h):
         c.call("season-reward/receive", {"seasonRewardIds": [rid]})
     row = next((r for r in c.t("seasonReward") if r.get("seasonRewardId") == rid), {})
     h.expect(limit > 1 and row.get("acquiredCount") == 2, f"palier extra reçu 2 fois : {row} (limite {limit})")
+
+
+def test_pvp_consecutive_win_bonus(h):
+    """Consecutive-win bonus = the rank's points (pvp.bin sub 1 field 6: 30 at rank 1 ... 160 at rank 9) from the
+    2nd win in a row (field 5); a loss starts the streak again. It was a made-up min(streak, 5) x 2 ("160 -> 10 ->
+    4", Discord 2026-10-28)."""
+    import api
+    h.new_player()
+    c = h.new_player()
+
+    def fight(win):
+        c.call("pvp/matching", {"expectedConsumingBp": 1, "pvpId": PVP, "reloadFlag": True})
+        same = next(o for o in c.t("pvpNpcParty") if o["rank"] == api.PVP_SAME)
+        rank = api.pvp_rank(PVP, c.row("pvp").get("point", 0))
+        c.call("pvp/start", {"activePartyId": 1, "consumingBp": 1, "npcPartyIndex": same["partyIndex"], "pvpId": PVP})
+        c.call("pvp/clear", {"elapsedTurn": 8, "pvpId": PVP, "winFlag": win})
+        c.call("login")  # result seen: back to idle
+        return c.row("pvpResult").get("consecutiveWinBonus"), master.PVP_RANK_ROWS[f"{PVP}:{rank}"]
+
+    first, _ = fight(True)
+    h.expect(first == 0, f"1re victoire : bonus {first}, 0 attendu")
+    second, row = fight(True)
+    h.expect(second == row["streak"] and row["streak"] > 0, f"2e victoire d'affilée : bonus {second}, {row['streak']}")
+    fight(False)
+    after_loss, _ = fight(True)
+    h.expect(after_loss == 0, f"après une défaite : bonus {after_loss}, 0 attendu")
+
+
+def test_event_season_points(h):
+    """An event with its own point season ("Unleash Blading" 601101000202 -> point item 405220906) never gave its
+    points: eventSeasonPoint stayed 0 (Discord 2026-10-27)."""
+    c = h.new_player()
+    quest = {"boostItemIds": [], "eventId": 601101000202, "level": 1, "partyId": 1, "questId": 8013993007,
+             "supporterPcId": 0, "supporterPcSlotId": 0, "supporterUserId": 0}
+    before = c.item(405220906)
+    c.call("quest/start", quest)
+    c.call("quest/clear")
+    res = c.row("questResult")
+    h.expect(res.get("eventSeasonPoint", 0) > 0 and res.get("eventSeasonPointItemId") == 405220906,
+             f"points de saison d'événement : {res.get('eventSeasonPoint')} / {res.get('eventSeasonPointItemId')}")
+    h.expect(c.item(405220906) == before + res["eventSeasonPoint"], "points non ajoutés à l'objet de saison")

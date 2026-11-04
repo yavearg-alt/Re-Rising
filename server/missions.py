@@ -90,8 +90,18 @@ def counters(uid: int) -> dict:
 
 # ---------------------------------------------------------------------------------------------- hooks
 
-def on_quest_clear(uid: int, quest_id: int, event_id: int, party_pc_ids: list):
+# quest boost items (api.BOOST_*) -> mission counter: 506 EXP, 507 Shia (Col), 508 item boost
+BOOST_COUNTERS = {249000002: "boost_exp", 249000001: "boost_gold", 249000003: "boost_item"}
+
+
+def on_quest_clear(uid: int, quest_id: int, event_id: int, party_pc_ids: list, incarnates: int = 0,
+                   boost_ids=()):
     counts = {"quest": 1, f"quest_{quest_id}": 1}
+    if incarnates > 0:
+        counts["incarnate"] = incarnates
+    for bid in set(boost_ids or ()):
+        if bid in BOOST_COUNTERS:
+            counts[BOOST_COUNTERS[bid]] = 1
     if event_id:
         if master.EVENT_KINDS.get(str(event_id)) == GROWTH_EVENT:
             counts["growth"] = 1
@@ -196,6 +206,14 @@ def _value(kind: int, category: int, m: list, ctx: dict) -> int | None:
         return 1 if total.get(f"quest_{param}_char_{extra}") else 0
     if kind == 1301:  # quests cleared with this character in the party
         return (daily if category == DAILY else total).get(f"char_{param}", 0)
+    # never counted (tester report, Discord 2026-10-28 "Bugged Regular Missions"): 501 Incarnate skills used in cleared
+    # quests, 506 / 507 / 508 quests cleared with an EXP / Shia / item boost, 502 players followed, 503 equipment
+    # inventory expanded
+    simple = {501: "incarnate", 506: "boost_exp", 507: "boost_gold", 508: "boost_item", 503: "equipment_expand"}
+    if kind in simple:
+        return total.get(simple[kind], 0)
+    if kind == 502:
+        return ctx["follows"]
     if kind == 101:  # user rank
         return master.player_rank(ctx["exp"])
     if kind == 102:  # login days
@@ -275,7 +293,7 @@ def update(uid: int) -> dict:
                     changed = True
             reset[key] = ms[key]
     ctx = {"counters": st, "quests": _quest_rows(uid), "exp": info.get("totalExp", 0), "guild": guild_base,
-           "tower": userdata.table(uid, "towerEventStatus"),
+           "tower": userdata.table(uid, "towerEventStatus"), "follows": len(userdata.table(uid, "follow")),
            "states": {r.get("missionId"): r.get("state", 0) for r in rows}}
     for _ in range(2):  # "every daily mission" and the beginner lists depend on other rows of this pass
         for r in rows:

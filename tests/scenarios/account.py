@@ -100,3 +100,39 @@ def test_home_setting_survives_reboot(h):
     resp = c.pull()
     h.expect("homeSetting" not in ((resp.get("table") or {}).get("replace") or {}),
              "user/pull ne doit pas écraser la personnalisation de l'accueil")
+
+
+def test_banner_read_states_kept(h):
+    """Scout banners always "New" after a restart: the client marks them seen in UserLotteryInfo without pushing,
+    and user/pull sent the server's empty copy back (Discord 2026-10-31). The client's copy now wins."""
+    from harness import userdata
+    c = h.new_player()
+    c.pull()
+    rows = [{"userId": c.uid, "lotteryId": 171207001, "readState": 1, "lastRemindedAt": 0},
+            {"userId": c.uid, "lotteryId": 171100173, "readState": 1, "lastRemindedAt": 0}]
+    c.tables["lotteryInfo"] = rows
+    c.hashes["lotteryInfo"] = userdata.table_hash("lotteryInfo", rows)  # seen on the device, not pushed
+    resp = c.pull()
+    h.expect("lotteryInfo" not in ((resp.get("table") or {}).get("replace") or {}),
+             "user/pull a renvoyé la copie serveur de UserLotteryInfo")
+    h.expect(c.t("lotteryInfo") == rows, "bannières vues perdues après pull")
+
+
+def test_one_time_illustration_bonus_does_not_loop(h):
+    """The "Unleash Blading" campaign bonus (40010000191: one day, a home illustration) started a new lap every day:
+    the illustration came back at every login (Discord 2026-10-27). One-time campaign bonuses giving something one
+    owns once stop after their last day; ordinary bonuses still loop."""
+    from harness import userdata
+    c = h.new_player()
+    c.call("login")
+    row = next(r for r in c.t("loginBonus") if r["loginBonusId"] == 40010000191)
+    h.expect(row["dayCount"] == 1, f"jour 1 du bonus : {row}")
+    # the next real days
+    for _ in range(2):
+        for b in (40010000191, 40010000002):
+            userdata.set_counter(c.uid, f"login_day_{b}", userdata.counter(c.uid, f"login_day_{b}") - 1)
+        c.call("login")
+    row = next(r for r in c.t("loginBonus") if r["loginBonusId"] == 40010000191)
+    h.expect(row["laps"] == 0 and row["dayCount"] == 1, f"bonus unique relancé : {row}")
+    weekly = next(r for r in c.t("loginBonus") if r["loginBonusId"] == 40010000002)
+    h.expect(weekly["dayCount"] == 3, f"le bonus ordinaire doit avancer : {weekly}")

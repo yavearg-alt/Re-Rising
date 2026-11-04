@@ -89,6 +89,8 @@ def maintenance_json() -> dict:
 # ---------------------------------------------------------------- in-game announcement pages
 
 GAME_CSS = """
+table{width:100%;border-collapse:collapse;margin:0 0 14px}td{padding:4px 6px;border-bottom:1px solid #2a4566}
+td.r{text-align:right;white-space:nowrap}h2{font-size:15px;margin:16px 0 6px;color:#ffd36a}
 body{margin:0;background:#0d1626;color:#e8eef8;font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif}
 header{padding:14px 16px;background:linear-gradient(90deg,#16304f,#0d1626);font-weight:700;font-size:17px;
 letter-spacing:.04em;border-bottom:2px solid #3f8fd8}
@@ -116,19 +118,55 @@ def _render_text(text: str) -> str:
     return " ".join(words).replace("\n", "<br>")
 
 
-def _game_doc(title: str, body: str) -> bytes:
+def _game_doc(title: str, body: str, header: str = "NEWS") -> bytes:
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title>'
-            f"<style>{GAME_CSS}</style></head><body><header>NEWS</header><main>{body}</main></body></html>").encode()
+            f"<style>{GAME_CSS}</style></head><body><header>{html.escape(header)}</header><main>{body}</main></body></html>").encode()
 
 
 def _date(ts) -> str:
     return time.strftime("%Y-%m-%d", time.localtime(ts or 0))
 
 
+def lottery_page(lottery_id: int):
+    """Scout details / rates page (the banner's "Details" and "Rates" buttons open /announcement/<lotteryId>00 and
+    <lotteryId>08), or None when the id is not a scout. They showed the news list instead: the patch notes
+    (tester report, Discord 2026-10-28). Built from the game data: headline, rate per rarity, rate of each item."""
+    price = master.LOTTERY["prices"].get(str(lottery_id))
+    if price and str(lottery_id) not in master.LOTTERY["rates"]:  # a price id: its scout
+        lottery_id = int(price["lottery"])
+    rates = master.LOTTERY["rates"].get(str(lottery_id))
+    pool = master.LOTTERY["items"].get(str(lottery_id))
+    if not rates or not pool:
+        return None
+    title = next((b[2] or b[1] for banners in master.BANNERS.values() for b in banners if b[0] == lottery_id), "")
+    title = title or "Scout"
+    total = sum(w for _, w in rates) or 1
+    sections = []
+    for rarity, weight in sorted(rates, reverse=True):
+        items = [x for x in pool if x["rarity"] == rarity and x["weight"]]
+        if not weight or not items:
+            continue
+        share = weight / total
+        inner = sum(x["weight"] for x in items) or 1
+        lines = "".join(
+            f'<tr><td>{html.escape(reward_name(x["rewardType"], x["target"]) or str(x["target"]))}</td>'
+            f'<td class="r">{share * x["weight"] / inner * 100:.3f}%</td></tr>'
+            for x in sorted(items, key=lambda x: -x["weight"]))
+        sections.append(f'<h2>★{rarity + 1} — {share * 100:.2f}%</h2><table>{lines}</table>')
+    body = (f'<h1>{html.escape(title.split("!")[0] + ("!" if "!" in title else ""))}</h1>'
+            f'<p>{html.escape(title)}</p>' + "".join(sections))
+    return _game_doc(title[:60], body, "SCOUT DETAILS")
+
+
 def game_page(path: str) -> bytes:
-    """/announcement (list) or /announcement/<id> (detail; unknown ids -- e.g. banner links -- show the list)."""
+    """/announcement (list) or /announcement/<id> (detail); a scout's /announcement/<lotteryId>00 or 08 (details,
+    rates) shows that scout; other unknown ids show the list."""
     rest = path[len("/announcement"):].strip("/")
+    if rest.isdigit() and len(rest) > 2 and rest[-2:] in ("00", "08"):
+        page = lottery_page(int(rest[:-2]))
+        if page:
+            return page
     ann = db.get_announcement(int(rest)) if rest.isdigit() else None
     if ann and ann["visible"]:
         img = f'<img src="{html.escape(ann["image_url"])}" alt="">' if ann["image_url"] else ""

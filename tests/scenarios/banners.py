@@ -69,3 +69,44 @@ def test_banner_on_off(h):
         if assets.CURRENT is not None:
             assets.CURRENT.refresh_windows()
     h.expect(config.EXTEND_WINDOWS, "Season 9 doit rester prolongée")
+
+
+def test_free_scout_draws_the_picked_number(h):
+    """Free scouts (cost 0, release.202210_lottery_free: 1000 free draws) send the number picked as ticketAmount
+    with no ticket: it always drew 1 (Discord 2026-11-03 "free scout number of times is not correct")."""
+    from harness import master as m
+    c = h.new_player()
+    price = 20220700101
+    h.expect(m.LOTTERY["prices"][str(price)]["cost"] == 0, "prix gratuit attendu")
+    c.call("lottery/draw", {"gemAmount": 0, "lotteryPriceId": price, "step": 0, "ticketAmount": 10, "ticketId": 0})
+    res = c.row("lotteryResult")
+    h.expect(len(res.get("resultItems") or []) == 10, f"10 tirages gratuits demandés, {len(res.get('resultItems') or [])}")
+    row = next(r for r in c.t("lotteryPrice") if r["lotteryPriceId"] == price)
+    h.expect(row["drawCount"] == 10, f"drawCount {row['drawCount']}, 10 attendus")
+
+
+def test_pickup_select_keeps_first_step_price(h):
+    """Choosing a pick-up wrote the banner's price rows at step 0: the client then showed the 11-draw's first step
+    at full price (125 -> 250 Diamond Cubes, Discord 2026-11-03)."""
+    from harness import master as m
+    c = h.new_player()
+    c.call("lottery/pickup/select", {"lotteryItemId": 31001010101})
+    rows = {r["lotteryPriceId"]: r for r in c.t("lotteryPrice")}
+    eleven = next(int(pid) for pid, p in m.LOTTERY["prices"].items() if p["lottery"] == 171100101 and p["type"] == 2)
+    single = next(int(pid) for pid, p in m.LOTTERY["prices"].items() if p["lottery"] == 171100101 and p["type"] == 1)
+    h.expect(rows[eleven]["currentStep"] == 1, f"11 tirages : étape {rows[eleven]['currentStep']}, 1 attendue")
+    h.expect(rows[single]["currentStep"] == 0, "tirage simple : pas d'étape")
+    h.expect(rows[eleven]["selectedPickupLotteryItemId"] == 31001010101, "pick-up non retenu")
+
+
+def test_scout_details_page(h):
+    """The scout's "Details" / "Rates" buttons open /announcement/<lotteryId>00 / 08: they showed the news list (the
+    patch notes, Discord 2026-10-28). They now show the scout: rate per rarity and per item, adding up to 100 %."""
+    import re
+    page = admin.game_page("/announcement/17110010100").decode()
+    h.expect("Release Celebration" in page and "★4" in page, "page de détails du scout attendue")
+    rates = [float(x) for x in re.findall(r'class="r">([0-9.]+)%', page)]
+    h.expect(rates and abs(sum(rates) - 100) < 0.5, f"somme des taux {sum(rates):.2f} %")
+    h.expect("Release Celebration" in admin.game_page("/announcement/17110010108").decode(), "page des taux")
+    h.expect("SCOUT DETAILS" not in admin.game_page("/announcement/99999999900").decode(),
+             "id inconnu : liste des actualités")

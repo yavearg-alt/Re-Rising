@@ -325,6 +325,9 @@ def ep_quest_start(uid, req):
     healed = healed_pcs(uid)
     if healed:
         changes["pc"] = healed
+    gauge = rested_gauge(uid)
+    if gauge:
+        changes["anotherForce"] = gauge
     info = spend_ap(uid, quest_id, status["level"])
     if info:
         changes["info"] = info
@@ -554,8 +557,10 @@ def ep_quest_clear(uid, req):
     achieved = bonus_mission_results(uid, quest_id, bonus_ids, setting) if bonus_ids else []
     after_flags = [max(a, b) for a, b in zip(before_flags, achieved)]
     if row is not None:
+        # runs of the day start again each game day (04:00 JST); the count only ever grew (34 runs "today")
+        today = row["playCountOfDay"] if game_day(row.get("lastPlayedAt") or 0) == game_day(now) else 0
         row.update(playCount=row["playCount"] + 1, clearCount=row["clearCount"] + 1,
-                   playCountOfDay=row["playCountOfDay"] + 1, lastPlayedAt=now)
+                   playCountOfDay=today + 1, lastPlayedAt=now)
         if bonus_ids:
             row["bonusMission"] = after_flags
         # best boss rank (1 = S, lower is better) / turns, like the archived account
@@ -602,6 +607,13 @@ def ep_quest_clear(uid, req):
     result.update(season)
     if season["seasonPoint"]:
         grant.item(season["seasonPointItemId"], season["seasonPoint"])
+    # the event's own point season (its event Battle Pass): never earned, the "Unleash Blading" season points stayed
+    # at 0 (tester report, Discord 2026-10-27). Same base and boost as the main season points.
+    event_season = event_season_points(uid, setting.get("eventId") or status.get("eventId", 0),
+                                       ql.get("ap", 0) * SEASON_POINTS_PER_AP)
+    result.update(event_season)
+    if event_season["eventSeasonPoint"]:
+        grant.item(event_season["eventSeasonPointItemId"], event_season["eventSeasonPoint"])
     # friend points for the supporter: never given (Discord 2026-10-18). The game says "You earned 30 Friend Points
     # for battling alongside your friend": 30 with a player you follow or who follows you, 10 with anyone else
     supporter = setting.get("supporterUserId", 0) if setting.get("questId") == quest_id else 0
@@ -623,6 +635,9 @@ def ep_quest_clear(uid, req):
     kept = setting if setting.get("questId") else idle_quest_setting(uid)
     changes = {**tower, "questResult": [result], "questStatus": [cleared], "questSetting": [kept],
                "questProgress": progress, "info": [info], **grant.changes()}
+    played = event_play(uid, setting.get("eventId") or status.get("eventId", 0), now)
+    if played:
+        changes["eventProgress"] = played
     # bonus missions: each one achieved for the first time gives its reward (1 Diamond Cube), and all of them done
     # gives the quest level's bonus reward, once; both go to the gift box like in the original game
     gifts = None
@@ -647,9 +662,28 @@ def ep_quest_clear(uid, req):
         response = raid._merge(response, userdata.set_tables(uid, raid_tables))
     # server missions: quest/chapter clears, bonus missions, daily and weekly quest counts, character missions
     party = next((p for p in userdata.table(uid, "party") if p.get("id") == setting.get("partyId")), {})
+    normal, boss = quest_battles(uid, quest_id)
     missions.on_quest_clear(uid, quest_id, status.get("eventId", 0),
-                            [sl.get("pcId") for sl in party.get("slots") or [] if sl.get("pcId")])
+                            [sl.get("pcId") for sl in party.get("slots") or [] if sl.get("pcId")],
+                            incarnates=sum(int(e.get("incarnateCount") or 0) for e in normal + boss),
+                            boost_ids=boost_ids)
     return raid._merge(response, missions.update(uid))
+
+
+def event_play(uid: int, event_id: int, now: int) -> list | None:
+    """UserEventProgress after one more run of a daily-limited event (master.EVENT_PLAY_LIMITS), or None. The client
+    shows "runs left = limit - playCount" for the current game day; the server never counted, so "Vigil Key
+    Collection" stayed at 5/5 runs left and its first free run was shown on every run (tester reports, Discord 2026-10-28). The count starts again each game day (04:00 JST)."""
+    if not event_id or str(event_id) not in master.EVENT_PLAY_LIMITS:
+        return None
+    rows = [dict(r) for r in userdata.table(uid, "eventProgress")]
+    row = next((r for r in rows if r.get("eventId") == event_id), None)
+    if row is None:
+        row = {"userId": uid, "eventId": event_id, "playCount": 0, "lastPlayedAt": 0, "readState": 1}
+        rows.append(row)
+    today = row.get("playCount", 0) if game_day(row.get("lastPlayedAt") or 0) == game_day(now) else 0
+    row.update(playCount=today + 1, lastPlayedAt=now)
+    return rows
 
 
 def ep_mission_receive(uid, req):
@@ -670,8 +704,11 @@ def ep_mission_receive(uid, req):
         add_gifts(uid, gifts, group_id, skip=(6, 10))
     changes = {"mission": missions, "gift": gifts}
     if ap:
+        # on top of the AP recovered since baseApUpdatedAt: adding to the stored baseAp lost that recovery
+        # ("+50 AP" took 87 AP to 104, tester report, Discord 2026-10-28)
         info = dict((userdata.table(uid, "info") or [{}])[0])
-        info["baseAp"] = info.get("baseAp", 0) + ap
+        current, updated = current_ap(info, int(config.now()))
+        info.update(baseAp=current + ap, baseApUpdatedAt=updated)
         changes["info"] = [info]
     if season:
         userdata.add_counter(uid, "season_points", season)
@@ -925,6 +962,11 @@ def ep_lottery_draw(uid, req):
         ticket_cost = count * price["cost"]
     drawn = next((r.get("drawCount", 0) for r in userdata.table(uid, "lotteryPrice")
                   if r.get("lotteryPriceId") == price_id), 0)
+    if not ticket_id and not gem_cost and price["type"] != 2 and not price.get("cost") and ticket_cost > 1:
+        # free scouts (cost 0, e.g. the 1000 free draws of release.202210_lottery_free): the number of draws the
+        # player picked comes as ticketAmount with no ticket; it always drew 1 (tester report, Discord 2026-11-03)
+        count = min(ticket_cost, MAX_TICKET_DRAWS, max(1, price["limit"] - drawn) if price["limit"] else MAX_TICKET_DRAWS)
+        ticket_cost = 0
     if price["limit"] and drawn + (count if price["type"] != 2 else 1) > price["limit"]:
         return {}
     grant = Grant(uid)
@@ -1017,10 +1059,31 @@ TUTORIAL_SKIPS = {
     # 14-18 (equipment scout, equipment, enhance, skill slot, event) and 44 run right after 1-2-3; done in the
     # archived account, and the equipment one softlocks when Kirito's sword is the one it points at
     "second": {"tutorials": list(range(100000004, 100000011)) + list(range(100000014, 100000019)) + [100000044],
-               "quests": [8110100011, 8130280011, 8110110011, 8110110021, 8110110031],
+               # 8140090011: the Equipment Creation Event Tutorial (Beginner) quest, which tutorial 100000018 stands
+               # for: the event showed COMPLETE but its mission stayed 0/1 and "Challenge" replayed the tutorial
+               # (tester report, Discord 2026-11-02; 74 accounts on one server)
+               "quests": [8110100011, 8130280011, 8110110011, 8110110021, 8110110031, 8140090011],
                "flags": [91210001, 91210002, 91210003, 91210005, 91210006, 91210007, 91210008, 91210010,
                          91210011, 91210012, 91210013, 91210017]},
 }
+
+
+def tutorial_quests_repair(uid: int) -> list | None:
+    """UserQuestProgress with the quests of the tutorial skips whose tutorials are done (accounts that skipped before
+    a quest was added to TUTORIAL_SKIPS), or None when nothing is missing. Run at login."""
+    done = {r.get("tutorialId") for r in userdata.table(uid, "tutorial")}
+    progress = list(userdata.table(uid, "questProgress"))
+    cleared = {r.get("questLevelId") for r in progress if r.get("clearCount")}
+    missing = [ql for skip in TUTORIAL_SKIPS.values() if set(skip["tutorials"]) <= done
+               for ql in skip["quests"] if ql not in cleared]
+    if not missing:
+        return None
+    now = int(config.now())
+    progress = [r for r in progress if r.get("questLevelId") not in missing]
+    progress += [{"userId": uid, "questLevelId": ql, "level": 1, "playCount": 1, "clearCount": 1, "clearRank": 4,
+                  "bonusMission": [0, 0, 0], "playCountOfDay": 0, "lastPlayedAt": now, "readState": 0,
+                  "bossClearRank": 0, "bossClearTurn": 0, "clearTurn": 0} for ql in dict.fromkeys(missing)]
+    return progress
 
 
 def tutorial_skip(uid: int, part: str) -> dict:
@@ -1208,7 +1271,9 @@ def ep_equipment_expand(uid, req):
         userdata.add_gems(uid, -cost)
     info = dict((userdata.table(uid, "info") or [{}])[0])
     info["equipmentStockAddCount"] = info.get("equipmentStockAddCount", 0) + add
-    return userdata.set_tables(uid, {"info": [info]})
+    out = userdata.set_tables(uid, {"info": [info]})
+    missions.bump(uid, equipment_expand=1)  # mission 503 "expand the equipment inventory"
+    return raid._merge(out, missions.update(uid))
 
 
 def ep_guest_search(uid, req):
@@ -1259,7 +1324,8 @@ def ep_friend_follow_request(uid, req):
         follows.append({"userId": uid, "followUserId": other})
         theirs = [dict(r) for r in userdata.table(other, "follower") if r.get("followerUserId") != uid]
         userdata.set_tables(other, {"follower": theirs + [{"userId": other, "followerUserId": uid, "readState": 0}]})
-    return userdata.set_tables(uid, _follow_tables(uid, follows, list(userdata.table(uid, "follower"))))
+    out = userdata.set_tables(uid, _follow_tables(uid, follows, list(userdata.table(uid, "follower"))))
+    return raid._merge(out, missions.update(uid))  # mission 502 "follow N players"
 
 
 def ep_friend_follow_remove(uid, req):
@@ -1333,12 +1399,26 @@ def game_day(ts: float) -> int:
     return int((ts - DAY_RESET) // 86400)
 
 
+def login_bonus_loops(bonus_id: int, days: dict) -> bool:
+    """False for a one-time campaign bonus (master.LOGIN_BONUS_ONCE) that gives something one owns once (a home
+    illustration 97xxxxxx, a character): it started a new lap every day, so the "Unleash Blading" illustration
+    (40010000191, one day) came back at every login (tester report, Discord 2026-10-27)."""
+    if bonus_id not in master.LOGIN_BONUS_ONCE:
+        return True
+    for group in days.values():
+        for it in master.REWARDS.get(str(group), {}).get("items", []):
+            if it["rewardType"] == 5 or (it["rewardType"] == 1 and 97000000 <= it["itemId"] < 98000000):
+                return False
+    return True
+
+
 def ep_login(uid, req):
     """Called at every boot: advance each active login bonus once per real day and grant that day's reward;
     readState 0 makes the client show the login bonus screen."""
     pvp_status_seen(uid)
     tower_repair(uid)
     tower_floor_rewards_backfill(uid)
+    repaired = tutorial_quests_repair(uid)
     now = int(config.now())
     rows = {r["loginBonusId"]: dict(r) for r in userdata.table(uid, "loginBonus")}
     grant = Grant(uid)
@@ -1365,6 +1445,8 @@ def ep_login(uid, req):
         userdata.set_counter(uid, f"login_day_{bonus_id}", game_day(time.time()))
         day = row["dayCount"] + 1
         if str(day) not in days:  # last day passed: next lap
+            if not login_bonus_loops(bonus_id, days):
+                continue
             day, row["laps"] = 1, row["laps"] + 1
         row.update(dayCount=day, receivedAt=now, readState=0)
         # rewards go straight to the inventory (the archived account holds its day-1 rewards as items, not gifts)
@@ -1388,6 +1470,8 @@ def ep_login(uid, req):
     elif any(r.get("readState") == 0 for r in rows.values()):
         # bonus already given today and shown: stored as seen (accounts of before the fix above)
         userdata.set_tables(uid, {"loginBonus": [dict(r, readState=1) for r in rows.values()]})
+    if repaired:
+        response = raid._merge(response, userdata.set_tables(uid, {"questProgress": repaired}))
     missions.on_login(uid)  # login days, time bonus windows, daily/weekly resets
     return raid._merge(response, missions.update(uid)) if response else missions.update(uid)
 
@@ -1520,7 +1604,11 @@ def ep_pvp_start(uid, req):
     members = {sl.get("pcId") for sl in party.get("slots", []) if sl.get("pcId")}
     pcs = [dict(p, **dict(zip(("hp", "mp"), master.pc_max_hp_mp(p["pcId"], p.get("totalExp", 0)))))
            if p.get("pcId") in members else p for p in userdata.table(uid, "pc")]
-    return userdata.set_tables(uid, {"pvp": rows, "pvpStatus": [status], "pc": pcs})
+    changes = {"pvp": rows, "pvpStatus": [status], "pc": pcs}
+    gauge = rested_gauge(uid)
+    if gauge:
+        changes["anotherForce"] = gauge
+    return userdata.set_tables(uid, changes)
 
 
 PVP_STATUS_IDLE, PVP_STATUS_CLEARED = 1, 3
@@ -1561,7 +1649,7 @@ def ep_pvp_clear(uid, req):
     mine = pvp_rank(pvp_id, me["point"])
     rank_row = master.PVP_RANK_ROWS.get(f"{pvp_id}:{mine}") or {
         "point": PVP_WIN_POINT, "turns": [], "slowTurn": 10000, "enemy": [20000, 10000, 8000],
-        "win": 0, "bp": 0, "first": 0}
+        "win": 0, "bp": 0, "first": 0, "streakFrom": 0, "streak": 0}
     # the chosen opponent's difficulty: x2 rank above, x1 same rank, x0.8 rank below (pvp_opponent_ranks)
     difficulty = chosen.get("rank", PVP_SAME)
     if difficulty not in (PVP_HARDER, PVP_SAME, PVP_EASIER):  # rows drawn before 2026-10-17: an Ordinal rank
@@ -1570,7 +1658,11 @@ def ep_pvp_clear(uid, req):
     turn_bonus = pvp_turn_bonus(rank_row, int(req.get("elapsedTurn") or 0))
     # BP spent on the battle (1 to 5) multiplies the points: 5 BP gave the same as 1 (Discord, 2026-10-17)
     bp_used = max(1, int(status.get("consumingBp") or 1))
-    streak_bonus = min(me["consecutiveWinCount"], 5) * 2 if win else 0
+    # consecutive-win bonus: the rank's points (pvp.bin sub 1 field 6, 30 at rank 1 ... 160 at rank 9) from the
+    # field-5-th win in a row (2). It was a made-up min(streak, 5) x 2: "160 -> 10 -> 4" (tester report, 2026-10-28)
+    streak = me["consecutiveWinCount"] + 1
+    streak_bonus = rank_row.get("streak", 0) if win and rank_row.get("streak") and streak >= max(
+        1, rank_row.get("streakFrom", 0)) else 0
     gained = (rank_row["point"] * turn_bonus * enemy_bonus // 10 ** 8 + streak_bonus) * bp_used if win else 0
     best_before = pvp_rank(pvp_id, me["maxReachingPoint"])
     me.update(point=me["point"] + gained, consecutiveWinCount=me["consecutiveWinCount"] + 1 if win else 0)
@@ -1600,8 +1692,9 @@ def ep_pvp_clear(uid, req):
     # consumingBp (the screen's "BP Bonus x5"), npcPartyIndex and pvpNpcParty (the beaten opponent shown on the
     # screen) stay until the next login (pvp_status_seen), which also draws fresh opponents.
     status.update(status=PVP_STATUS_CLEARED, matchingUpdatedAt=int(config.now()))
-    return userdata.set_tables(uid, {"pvp": rows, "pvpResult": [result], "pvpStatus": [status],
-                                     **grant.changes()})
+    # the party screen showed the hp / mp / INC left by the Ordinal battle (tester report, 2026-10-28): rested like a quest
+    return rest_party(uid, userdata.set_tables(uid, {"pvp": rows, "pvpResult": [result], "pvpStatus": [status],
+                                                     **grant.changes()}))
 
 
 
@@ -1655,6 +1748,17 @@ def season_points(uid: int, base: int) -> dict:
             ratio = max(ratio, info["ratio"])
     return {"seasonPoint": base * ratio // 10000, "seasonPointItemId": master.SEASON["pointItems"][season],
             "seasonPointBoostRatio": ratio}
+
+
+def event_season_points(uid: int, event_id: int, base: int) -> dict:
+    """eventSeasonPoint / eventSeasonPointItemId / eventSeasonPointBoostRatio of a quest result of an event that has
+    its own point season (master.EVENT_SEASONS), else zeros."""
+    season = master.EVENT_SEASONS.get(str(event_id or 0))
+    if not season or base <= 0:
+        return {"eventSeasonPoint": 0, "eventSeasonPointItemId": 0, "eventSeasonPointBoostRatio": 0}
+    ratio = season_points(uid, base).get("seasonPointBoostRatio") or 10000
+    return {"eventSeasonPoint": base * ratio // 10000, "eventSeasonPointItemId": season[1],
+            "eventSeasonPointBoostRatio": ratio}
 
 
 def ep_season_reward_receive(uid, req):
@@ -1738,23 +1842,25 @@ def pass_bundles(uid: int, grant) -> bool:
 
 
 def is_imagination(item_id: int) -> bool:
-    """Imaginarium ids (item.20 / imagination.*, 380xxxxxx)."""
-    return 380000000 <= int(item_id) < 381000000
+    """Imaginarium ids (item.20 / imagination.*): 380xxxxxx, and 381xxxxxx for the Iskahn and Tales of ARISE Kirito
+    ones. The 381 ones were missed, so they went to UserItem and never showed (tester report, Discord 2026-10-28)."""
+    return 380000000 <= int(item_id) < 382000000
 
 
 def imagination_backfill(uid: int, grant) -> bool:
-    """Once per account: the Imaginarium lost before rewardType 7 was handled. Those claimed as plain items (Discord
-    bot) sit in UserItem where the game never looks: moved to UserImaginationStock; the Battle Pass tiers already
-    received give theirs now. (Login bonus ones cannot be counted back.)"""
-    if userdata.counter(uid, "imagination_backfill"):
-        return False
-    userdata.set_counter(uid, "imagination_backfill", 1)
+    """The Imaginarium lost before rewardType 7 was handled. Those claimed or gifted as plain items sit in UserItem
+    where the game never looks: moved to UserImaginationStock (at every login: the 381xxxxxx ones were only
+    recognised later). Once per account, the Battle Pass tiers already received give theirs. (Login bonus ones
+    cannot be counted back.)"""
     given = False
     for item_id, row in list(grant.items.items()):
         if is_imagination(item_id) and row.get("amount", 0) > 0:
             grant.imagination(item_id, row["amount"])
             grant.item(item_id, -row["amount"])
             given = True
+    if userdata.counter(uid, "imagination_backfill"):
+        return given
+    userdata.set_counter(uid, "imagination_backfill", 1)
     for r in userdata.table(uid, "seasonReward"):
         tier = master.SEASON["rewards"].get(str(r.get("seasonRewardId")))
         if not tier or not r.get("acquiredCount"):
@@ -1850,8 +1956,13 @@ def ep_lottery_pickup_select(uid, req):
         targets.add(str(price_id))
     have = {str(r["lotteryPriceId"]) for r in rows}
     for pid in targets - have:
+        # a step-up banner's 11-draw starts at its first step: a row at step 0 made the client show the full price
+        # (125 Diamond Cubes for step 1 became 250 once a pick-up was chosen, tester report, Discord 2026-11-03)
+        p = master.LOTTERY["prices"].get(pid, {})
+        steps = master.LOTTERY["steps"].get(str(p.get("lottery")), {})
+        first = min((int(k) for k in steps if int(k) > 0), default=0) if p.get("type") == 2 else 0
         rows.append({"userId": uid, "lotteryPriceId": int(pid), "drawCount": 0, "dailyDrawCount": 0,
-                     "currentDrawCount": 0, "currentStep": 0, "lastDrawTime": 0, "currentAdditionalRateStep": 0,
+                     "currentDrawCount": 0, "currentStep": first, "lastDrawTime": 0, "currentAdditionalRateStep": 0,
                      "canDrawAdditional": False, "selectedPickupLotteryItemId": 0})
     for r in rows:
         if str(r["lotteryPriceId"]) in targets:
@@ -1878,15 +1989,21 @@ def ep_item_custom_exchange(uid, req):
 
 
 def ep_quest_boost_item_purchase(uid, req):
-    """{"boostItemIds": [...]}: buy one of each quest boost item with gold (item.bin field 5)."""
+    """{"boostItemIds": [...]}: buy one of each quest boost item with gold (item.bin field 5). Without enough gold
+    on the server the purchase stops there, but the item table is still sent: an empty answer left the client
+    waiting for the boost it thought it bought, the quest screen frozen ("Freeze with skip ticket and Shia boost",
+    tester report, Discord 2026-10-30)."""
     grant = Grant(uid)
     for bid in (req or {}).get("boostItemIds") or []:
         cost = master.BOOST_ITEMS.get(str(bid), 0)
         if grant.items.get(GOLD_ITEM, {}).get("amount", 0) < cost:
-            return {}
+            print(f"BOOST purchase refused uid={uid} boost={bid}: not enough gold", flush=True)
+            break
         grant.item(GOLD_ITEM, -cost)
         grant.item(int(bid), 1)
-    return userdata.set_tables(uid, grant.changes())
+    changes = grant.changes()
+    changes.setdefault("item", list(userdata.table(uid, "item")))
+    return userdata.set_tables(uid, changes)
 
 
 def ep_quest_retire(uid, req):
@@ -1903,12 +2020,29 @@ def ep_quest_retire(uid, req):
     return rest_party(uid, userdata.set_tables(uid, changes))
 
 
+def rested_gauge(uid: int) -> list | None:
+    """UserAnotherForce with the party's Incarnation (INC) gauge back to 0, or None when it already is. The client
+    pushes the gauge after each battle (gauge 0..20000 = 0..200 %) and starts the next battle from it; the server
+    never emptied it, so a quest or an Ordinal battle started with the last one's INC, up to 200 % (tester reports,
+    Discord 2026-10-28 / 11-02). The archived account rests at 0 between quests."""
+    rows = userdata.table(uid, "anotherForce")
+    if not any(r.get("gauge") for r in rows):
+        return None
+    return [dict(r, gauge=0) for r in rows]
+
+
 def rest_party(uid: int, response: dict) -> dict:
-    """Back to full hp/mp when a quest ends (clear or retire), like the archived account at rest. Only quest/start
-    healed, but the party screen showed the hp left by the last battle and a character knocked out in a lost
-    lesson stayed at 0 hp (Kirito 0/987, 2026-10-17)."""
+    """Back to full hp/mp and an empty INC gauge when a quest or an Ordinal battle ends (clear or retire), like the
+    archived account at rest. Only quest/start healed, but the party screen showed the hp left by the last battle
+    and a character knocked out in a lost lesson stayed at 0 hp (Kirito 0/987, 2026-10-17)."""
+    changes = {}
     healed = healed_pcs(uid)
-    return raid._merge(response, userdata.set_tables(uid, {"pc": healed})) if healed else response
+    if healed:
+        changes["pc"] = healed
+    gauge = rested_gauge(uid)
+    if gauge:
+        changes["anotherForce"] = gauge
+    return raid._merge(response, userdata.set_tables(uid, changes)) if changes else response
 
 
 def idle_quest_setting(uid):

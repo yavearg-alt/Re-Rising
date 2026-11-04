@@ -264,8 +264,14 @@ def tables(uid: int, extra=()) -> dict:
     if g and (missions_today(g) | sync_missions(g)):
         save(g)
     gid = g["id"] if g else 0
+    everyone = db.list_guilds()
+    # the guilds that invited me or that I asked to join: the invitation / request screens read their UserGuild
+    # row; it was missing, so opening the invitations crashed the game (tester report, Discord 2026-10-30)
+    pending = [x for x in everyone if str(uid) in x.get("invites", {}) or str(uid) in x.get("requests", {})]
     shown = [g] if g else []
-    shown += [x for x in extra if x and x["id"] != gid]
+    for x in list(extra) + pending:
+        if x and x["id"] != gid and all(x["id"] != y["id"] for y in shown):
+            shown.append(x)
     out = {
         "guild": [guild_row(uid, x) for x in shown],
         "guildMember": [r for x in shown for r in member_rows(uid, x)],
@@ -299,7 +305,6 @@ def tables(uid: int, extra=()) -> dict:
                                       "lastTimeLineUpdatedAt": tl[-1]["registeredAt"] if tl else 0,
                                       "lastTimeLineId": tl[-1]["id"] if tl else 0}] if g else []
     # my pending join requests / invites received (all guilds)
-    everyone = db.list_guilds()
     out["guildJoinRequest"] = [{"userId": uid, "guildId": x["id"], "registeredAt": x["requests"][str(uid)]}
                                for x in everyone if str(uid) in x.get("requests", {})]
     out["guildMemberInviteReceive"] = [
